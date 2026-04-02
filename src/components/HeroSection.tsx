@@ -3,6 +3,15 @@ import { Mail, Phone, MapPin, Linkedin } from "lucide-react";
 import profileImg from "@/assets/profile.png";
 import heroBg from "@/assets/hero-bg.jpg";
 
+const HuggingFaceIcon = () => (
+  <svg viewBox="0 0 120 120" className="w-4 h-4 text-primary" fill="currentColor">
+    <path d="M60 0C26.9 0 0 26.9 0 60s26.9 60 60 60 60-26.9 60-60S93.1 0 60 0zm0 110C32.4 110 10 87.6 10 60S32.4 10 60 10s50 22.4 50 50-22.4 50-50 50z"/>
+    <circle cx="40" cy="50" r="6"/>
+    <circle cx="80" cy="50" r="6"/>
+    <path d="M40 75c0 0 10 15 20 15s20-15 20-15" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+  </svg>
+);
+
 const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
