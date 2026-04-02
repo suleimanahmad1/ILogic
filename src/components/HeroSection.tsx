@@ -3,6 +3,15 @@ import { Mail, Phone, MapPin, Linkedin } from "lucide-react";
 import profileImg from "@/assets/profile.png";
 import heroBg from "@/assets/hero-bg.jpg";
 
+const HuggingFaceIcon = () => (
+  <svg viewBox="0 0 120 120" className="w-4 h-4 text-primary" fill="currentColor">
+    <path d="M60 0C26.9 0 0 26.9 0 60s26.9 60 60 60 60-26.9 60-60S93.1 0 60 0zm0 110C32.4 110 10 87.6 10 60S32.4 10 60 10s50 22.4 50 50-22.4 50-50 50z"/>
+    <circle cx="40" cy="50" r="6"/>
+    <circle cx="80" cy="50" r="6"/>
+    <path d="M40 75c0 0 10 15 20 15s20-15 20-15" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+  </svg>
+);
+
 const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -46,17 +55,20 @@ const HeroSection = () => {
             transition={{ delay: 0.5, duration: 0.6 }}
             className="flex flex-wrap justify-center md:justify-start gap-3 text-sm text-muted-foreground"
           >
-            <a href="mailto:suleimanahmed1222@gmail.com" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
-              <Mail className="w-4 h-4 text-primary" /> suleimanahmed1222@gmail.com
+            <a href="mailto:suleiman.inferencelogic@gmail.com" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
+              <Mail className="w-4 h-4 text-primary" /> suleiman.inferencelogic@gmail.com
             </a>
-            <a href="tel:03024522705" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
-              <Phone className="w-4 h-4 text-primary" /> 0302-4522705
+            <a href="https://wa.me/923259199419" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
+              <Phone className="w-4 h-4 text-primary" /> 0325-9199419
             </a>
             <span className="flex items-center gap-2 glass px-4 py-2 rounded-full">
               <MapPin className="w-4 h-4 text-primary" /> Lahore, Pakistan
             </span>
             <a href="https://www.linkedin.com/in/suleimanahmad" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
               <Linkedin className="w-4 h-4 text-primary" /> LinkedIn
+            </a>
+            <a href="https://huggingface.co/suleiman-ahmed" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
+              <HuggingFaceIcon /> Hugging Face
             </a>
           </motion.div>
         </div>
