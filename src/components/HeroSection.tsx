@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, Linkedin, Github } from "lucide-react";
+import { Mail, Phone, MapPin, Linkedin, Github as GithubIcon } from "lucide-react";
 import profileImg from "@/assets/profile.png";
 import heroBg from "@/assets/hero-bg.jpg";
 
