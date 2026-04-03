@@ -64,11 +64,11 @@ const HeroSection = () => {
             <span className="flex items-center gap-2 glass px-4 py-2 rounded-full">
               <MapPin className="w-4 h-4 text-primary" /> Lahore, Pakistan
             </span>
-            <a href="https://www.linkedin.com/in/suleimanahmad/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
+            <a href="https://www.linkedin.com/in/suleimanahmad" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
               <Linkedin className="w-4 h-4 text-primary" /> LinkedIn
             </a>
-            <a href="https://huggingface.co/suleiman-ahmed" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
-              <HuggingFaceIcon /> Hugging Face
+            <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
+              <Github className="w-4 h-4 text-primary" /> GitHub
             </a>
           </motion.div>
         </div>
