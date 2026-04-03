@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mail, Phone, MapPin, Linkedin, Github } from "lucide-react";
+import { Mail, Phone, MapPin, Linkedin, Github as GithubIcon } from "lucide-react";
 import profileImg from "@/assets/profile.png";
 import heroBg from "@/assets/hero-bg.jpg";
 
@@ -68,7 +68,7 @@ const HeroSection = () => {
               <Linkedin className="w-4 h-4 text-primary" /> LinkedIn
             </a>
             <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
-              <Github className="w-4 h-4 text-primary" /> GitHub
+              <GithubIcon className="w-4 h-4 text-primary" /> GitHub
             </a>
           </motion.div>
         </div>
