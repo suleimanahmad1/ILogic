@@ -5,7 +5,7 @@ const skills = [
   { category: "Languages", icon: Code2, items: ["Python", "JavaScript", "React", "Solidity", "C++"] },
   { category: "Frameworks", icon: Layers, items: ["FastAPI", "Streamlit", "TensorFlow", "Pandas", "LangChain", "CrewAI"] },
   { category: "Vector DBs", icon: Database, items: ["Qdrant", "Pinecone", "FAISS", "Supabase"] },
-  { category: "Dev Tools", icon: Wrench, items: ["VS Code", "Google AI Studio", "WindSurf", "Lovable"] },
+  { category: "Dev Tools", icon: Wrench, items: ["VS Code", "Google AI Studio", "WindSurf", "Lovable", "Hugging Face", "Google Colab"] },
   { category: "Cloud", icon: Cloud, items: ["Microsoft Azure", "AWS"] },
 ];
 
