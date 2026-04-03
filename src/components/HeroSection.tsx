@@ -68,7 +68,7 @@ const HeroSection = () => {
               <Linkedin className="w-4 h-4 text-primary" /> LinkedIn
             </a>
             <a href="https://github.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-primary transition-colors glass px-4 py-2 rounded-full">
-              <Github className="w-4 h-4 text-primary" /> GitHub
+              <GithubIcon className="w-4 h-4 text-primary" /> GitHub
             </a>
           </motion.div>
         </div>
