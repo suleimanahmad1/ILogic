@@ -1,70 +1,82 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Brain, FileText, BarChart3, Car, Headphones, MessageSquare, ExternalLink } from "lucide-react";
+import { ExternalLink, Github as GithubIcon, Globe } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-const projects = [
-  { name: "RAG Applications", icon: Brain, desc: "Retrieval-Augmented Generation systems using LangChain and vector databases", url: "" },
-  { name: "Resume Parser", icon: FileText, desc: "Intelligent document parsing and information extraction pipeline", url: "" },
-  { name: "Sentiment Analysis", icon: BarChart3, desc: "NLP-powered sentiment classification and analysis tool", url: "" },
-  { name: "Road Accident Prediction", icon: Car, desc: "ML model predicting road accidents using historical data", url: "" },
-  { name: "Customer Support Agent", icon: MessageSquare, desc: "AI-powered conversational agent for automated customer support", url: "" },
-  { name: "Image Captioning + Voice", icon: Headphones, desc: "Multi-modal AI combining image captioning with voice synthesis", url: "" },
+const openExternal = (e: React.MouseEvent, url: string) => {
+  e.preventDefault();
+  window.open(url, "_blank", "noopener,noreferrer");
+};
+
+const fallbackProjects = [
+  { id: "1", title: "RAG Applications", description: "Retrieval-Augmented Generation systems using LangChain and vector databases", tech_stack: ["LangChain", "FAISS"], url: null, github_url: null, live_url: null },
+  { id: "2", title: "Resume Parser", description: "Intelligent document parsing and information extraction pipeline", tech_stack: ["Python", "NLP"], url: null, github_url: null, live_url: null },
+  { id: "3", title: "Sentiment Analysis", description: "NLP-powered sentiment classification and analysis tool", tech_stack: ["TensorFlow", "Python"], url: null, github_url: null, live_url: null },
+  { id: "4", title: "Road Accident Prediction", description: "ML model predicting road accidents using historical data", tech_stack: ["Scikit-learn"], url: null, github_url: null, live_url: null },
+  { id: "5", title: "Customer Support Agent", description: "AI-powered conversational agent for automated customer support", tech_stack: ["CrewAI", "FastAPI"], url: null, github_url: null, live_url: null },
+  { id: "6", title: "Image Captioning + Voice", description: "Multi-modal AI combining image captioning with voice synthesis", tech_stack: ["TensorFlow", "gTTS"], url: null, github_url: null, live_url: null },
 ];
 
 const ProjectsSection = () => {
+  const [projects, setProjects] = useState<any[]>(fallbackProjects);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase.from("projects").select("*").order("sort_order");
+      if (data && data.length > 0) setProjects(data);
+    };
+    fetch();
+  }, []);
+
   return (
     <section id="projects" className="section-padding">
       <div className="container mx-auto max-w-5xl">
-        <motion.div
-          initial={{ y: 40, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
+        <motion.div initial={{ y: 40, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
           <h2 className="text-3xl md:text-4xl font-bold mb-2">
             <span className="text-gradient">Projects</span>
           </h2>
-          <div className="w-16 h-1 bg-primary rounded-full mb-10" />
+          <div className="w-12 h-0.5 bg-primary/60 rounded-full mb-10" />
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project, i) => {
-              const CardContent = (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <project.icon className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
-                    {project.url && (
-                      <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                    )}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {projects.map((project, i) => (
+              <motion.div
+                key={project.id}
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.4 }}
+                className="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-5 hover:border-primary/30 transition-all duration-300"
+              >
+                <h3 className="font-semibold text-foreground mb-2 text-sm">{project.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-4">{project.description}</p>
+
+                {project.tech_stack?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {project.tech_stack.map((t: string) => (
+                      <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{t}</span>
+                    ))}
                   </div>
-                  <h3 className="font-semibold text-foreground mb-2">{project.name}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{project.desc}</p>
-                </>
-              );
+                )}
 
-              return (
-                <motion.div
-                  key={project.name}
-                  initial={{ y: 30, opacity: 0 }}
-                  whileInView={{ y: 0, opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1, duration: 0.5 }}
-                >
-                  {project.url ? (
-                    <a
-                      href={project.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="glass rounded-lg p-6 group hover:glow-border transition-all duration-300 block h-full"
-                    >
-                      {CardContent}
+                <div className="flex gap-2">
+                  {project.github_url && (
+                    <a href={project.github_url} onClick={(e) => openExternal(e, project.github_url)} className="text-muted-foreground hover:text-primary transition-colors">
+                      <GithubIcon className="w-4 h-4" />
                     </a>
-                  ) : (
-                    <div className="glass rounded-lg p-6 group hover:glow-border transition-all duration-300 h-full">
-                      {CardContent}
-                    </div>
                   )}
-                </motion.div>
-              );
-            })}
+                  {project.live_url && (
+                    <a href={project.live_url} onClick={(e) => openExternal(e, project.live_url)} className="text-muted-foreground hover:text-primary transition-colors">
+                      <Globe className="w-4 h-4" />
+                    </a>
+                  )}
+                  {project.url && !project.live_url && (
+                    <a href={project.url} onClick={(e) => openExternal(e, project.url)} className="text-muted-foreground hover:text-primary transition-colors">
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
       </div>
