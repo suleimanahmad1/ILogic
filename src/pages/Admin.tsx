@@ -5,18 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen } from "lucide-react";
+import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X } from "lucide-react";
 
-type Tab = "messages" | "projects" | "content" | "resume";
+type Tab = "messages" | "projects" | "certificates" | "content" | "resume";
 
 const Admin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("messages");
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  useEffect(() => { checkAuth(); }, []);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -31,33 +29,43 @@ const Admin = () => {
     navigate("/admin-login");
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background text-foreground">Loading...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background text-foreground text-sm">Loading...</div>;
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "messages", label: "Messages", icon: <Mail className="w-4 h-4" /> },
-    { key: "projects", label: "Projects", icon: <FolderOpen className="w-4 h-4" /> },
-    { key: "content", label: "Content", icon: <FileText className="w-4 h-4" /> },
-    { key: "resume", label: "Resume", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { key: "messages", label: "Messages", icon: <Mail className="w-3.5 h-3.5" /> },
+    { key: "projects", label: "Projects", icon: <FolderOpen className="w-3.5 h-3.5" /> },
+    { key: "certificates", label: "Certificates", icon: <Award className="w-3.5 h-3.5" /> },
+    { key: "content", label: "Content", icon: <FileText className="w-3.5 h-3.5" /> },
+    { key: "resume", label: "Resume", icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="glass border-b border-border/50 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gradient">Admin Dashboard</h1>
-        <Button variant="ghost" size="sm" onClick={handleLogout}><LogOut className="w-4 h-4 mr-2" /> Logout</Button>
+      <header className="border-b border-border/40 px-6 py-3.5 flex items-center justify-between bg-card/40 backdrop-blur-sm">
+        <h1 className="text-lg font-semibold text-gradient">Admin</h1>
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs"><LogOut className="w-3.5 h-3.5 mr-1.5" /> Logout</Button>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex gap-2 mb-6 overflow-x-auto">
+      <div className="container mx-auto px-4 py-5 max-w-4xl">
+        <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
           {tabs.map(t => (
-            <Button key={t.key} variant={tab === t.key ? "default" : "outline"} size="sm" onClick={() => setTab(t.key)} className="flex items-center gap-2">
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                tab === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground border border-border/40"
+              }`}
+            >
               {t.icon} {t.label}
-            </Button>
+            </button>
           ))}
         </div>
 
         {tab === "messages" && <MessagesTab />}
         {tab === "projects" && <ProjectsTab />}
+        {tab === "certificates" && <CertificatesTab />}
         {tab === "content" && <ContentTab />}
         {tab === "resume" && <ResumeTab />}
       </div>
@@ -65,6 +73,7 @@ const Admin = () => {
   );
 };
 
+/* ─── Messages ─── */
 const MessagesTab = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,32 +89,35 @@ const MessagesTab = () => {
   const deleteMessage = async (id: string) => {
     await supabase.from("contact_messages").delete().eq("id", id);
     setMessages(prev => prev.filter(m => m.id !== id));
-    toast.success("Message deleted");
+    toast.success("Deleted");
   };
 
-  if (loading) return <p>Loading messages...</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Contact Messages ({messages.length})</h2>
-      {messages.length === 0 ? <p className="text-muted-foreground">No messages yet.</p> : messages.map(m => (
-        <div key={m.id} className="glass rounded-lg p-4 flex justify-between items-start gap-4">
-          <div>
-            <p className="font-medium">{m.name} &lt;{m.email}&gt;</p>
-            <p className="text-sm text-muted-foreground mt-1">{m.message}</p>
-            <p className="text-xs text-muted-foreground mt-2">{new Date(m.created_at).toLocaleString()}</p>
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">{messages.length} message(s)</p>
+      {messages.length === 0 ? <p className="text-sm text-muted-foreground">No messages yet.</p> : messages.map(m => (
+        <div key={m.id} className="rounded-lg border border-border/40 bg-card/40 p-4 flex justify-between items-start gap-3">
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{m.name} · <span className="text-muted-foreground">{m.email}</span></p>
+            <p className="text-xs text-muted-foreground mt-1.5 whitespace-pre-wrap">{m.message}</p>
+            <p className="text-[10px] text-muted-foreground/60 mt-2">{new Date(m.created_at).toLocaleString()}</p>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => deleteMessage(m.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+          <Button variant="ghost" size="icon" className="flex-shrink-0 h-7 w-7" onClick={() => deleteMessage(m.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
         </div>
       ))}
     </div>
   );
 };
 
+/* ─── Projects ─── */
 const ProjectsTab = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: "", description: "", tech_stack: "", url: "" });
+  const [form, setForm] = useState({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
 
   useEffect(() => { fetchProjects(); }, []);
 
@@ -122,40 +134,102 @@ const ProjectsTab = () => {
       description: form.description,
       tech_stack: form.tech_stack.split(",").map(s => s.trim()).filter(Boolean),
       url: form.url || null,
+      github_url: form.github_url || null,
+      live_url: form.live_url || null,
     });
     if (error) { toast.error(error.message); return; }
-    setForm({ title: "", description: "", tech_stack: "", url: "" });
+    setForm({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "" });
     fetchProjects();
     toast.success("Project added");
+  };
+
+  const startEdit = (p: any) => {
+    setEditId(p.id);
+    setEditForm({
+      title: p.title,
+      description: p.description,
+      tech_stack: p.tech_stack?.join(", ") || "",
+      url: p.url || "",
+      github_url: p.github_url || "",
+      live_url: p.live_url || "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    const { error } = await supabase.from("projects").update({
+      title: editForm.title,
+      description: editForm.description,
+      tech_stack: editForm.tech_stack.split(",").map((s: string) => s.trim()).filter(Boolean),
+      url: editForm.url || null,
+      github_url: editForm.github_url || null,
+      live_url: editForm.live_url || null,
+    }).eq("id", editId);
+    if (error) { toast.error(error.message); return; }
+    setEditId(null);
+    fetchProjects();
+    toast.success("Updated");
   };
 
   const deleteProject = async (id: string) => {
     await supabase.from("projects").delete().eq("id", id);
     setProjects(prev => prev.filter(p => p.id !== id));
-    toast.success("Project deleted");
+    toast.success("Deleted");
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
 
   return (
-    <div className="space-y-6">
-      <div className="glass rounded-lg p-4 space-y-3">
-        <h3 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4" /> Add Project</h3>
-        <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-        <Textarea placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-        <Input placeholder="Tech Stack (comma separated)" value={form.tech_stack} onChange={e => setForm(f => ({ ...f, tech_stack: e.target.value }))} />
-        <Input placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
-        <Button onClick={addProject}>Add Project</Button>
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
+        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Project</h3>
+        <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
+        <Textarea placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
+        <Input placeholder="Tech Stack (comma separated)" value={form.tech_stack} onChange={e => setForm(f => ({ ...f, tech_stack: e.target.value }))} className="text-sm" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <Input placeholder="GitHub URL (optional)" value={form.github_url} onChange={e => setForm(f => ({ ...f, github_url: e.target.value }))} className="text-sm" />
+          <Input placeholder="Live URL (optional)" value={form.live_url} onChange={e => setForm(f => ({ ...f, live_url: e.target.value }))} className="text-sm" />
+          <Input placeholder="Other URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
+        </div>
+        <Button size="sm" onClick={addProject} className="text-xs">Add</Button>
       </div>
-      <div className="space-y-3">
+
+      <div className="space-y-2.5">
         {projects.map(p => (
-          <div key={p.id} className="glass rounded-lg p-4 flex justify-between items-start">
-            <div>
-              <p className="font-medium">{p.title}</p>
-              <p className="text-sm text-muted-foreground">{p.description}</p>
-              {p.tech_stack?.length > 0 && <p className="text-xs text-primary mt-1">{p.tech_stack.join(", ")}</p>}
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => deleteProject(p.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+          <div key={p.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
+            {editId === p.id ? (
+              <div className="space-y-2">
+                <Input value={editForm.title} onChange={e => setEditForm((f: any) => ({ ...f, title: e.target.value }))} className="text-sm" />
+                <Textarea value={editForm.description} onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
+                <Input placeholder="Tech Stack" value={editForm.tech_stack} onChange={e => setEditForm((f: any) => ({ ...f, tech_stack: e.target.value }))} className="text-sm" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Input placeholder="GitHub URL" value={editForm.github_url} onChange={e => setEditForm((f: any) => ({ ...f, github_url: e.target.value }))} className="text-sm" />
+                  <Input placeholder="Live URL" value={editForm.live_url} onChange={e => setEditForm((f: any) => ({ ...f, live_url: e.target.value }))} className="text-sm" />
+                  <Input placeholder="Other URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
+                </div>
+                <div className="flex gap-1.5">
+                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{p.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
+                  {p.tech_stack?.length > 0 && <p className="text-[10px] text-primary mt-1">{p.tech_stack.join(", ")}</p>}
+                  <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
+                    {p.github_url && <span>GitHub ✓</span>}
+                    {p.live_url && <span>Live ✓</span>}
+                    {p.url && <span>URL ✓</span>}
+                  </div>
+                </div>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(p)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteProject(p.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -163,10 +237,124 @@ const ProjectsTab = () => {
   );
 };
 
+/* ─── Certificates ─── */
+const CertificatesTab = () => {
+  const [certs, setCerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ name: "", organization: "", year: "", code: "", url: "" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+
+  useEffect(() => { fetchCerts(); }, []);
+
+  const fetchCerts = async () => {
+    const { data } = await supabase.from("certificates").select("*").order("sort_order");
+    setCerts(data || []);
+    setLoading(false);
+  };
+
+  const addCert = async () => {
+    if (!form.name.trim() || !form.organization.trim()) { toast.error("Name & Organization required"); return; }
+    const { error } = await supabase.from("certificates").insert({
+      name: form.name,
+      organization: form.organization,
+      year: form.year,
+      code: form.code || null,
+      url: form.url || null,
+    });
+    if (error) { toast.error(error.message); return; }
+    setForm({ name: "", organization: "", year: "", code: "", url: "" });
+    fetchCerts();
+    toast.success("Certificate added");
+  };
+
+  const startEdit = (c: any) => {
+    setEditId(c.id);
+    setEditForm({ name: c.name, organization: c.organization, year: c.year, code: c.code || "", url: c.url || "" });
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    const { error } = await supabase.from("certificates").update({
+      name: editForm.name,
+      organization: editForm.organization,
+      year: editForm.year,
+      code: editForm.code || null,
+      url: editForm.url || null,
+    }).eq("id", editId);
+    if (error) { toast.error(error.message); return; }
+    setEditId(null);
+    fetchCerts();
+    toast.success("Updated");
+  };
+
+  const deleteCert = async (id: string) => {
+    await supabase.from("certificates").delete().eq("id", id);
+    setCerts(prev => prev.filter(c => c.id !== id));
+    toast.success("Deleted");
+  };
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
+        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Certificate</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <Input placeholder="Certificate Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="text-sm" />
+          <Input placeholder="Organization" value={form.organization} onChange={e => setForm(f => ({ ...f, organization: e.target.value }))} className="text-sm" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <Input placeholder="Year" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} className="text-sm" />
+          <Input placeholder="Code (optional)" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className="text-sm" />
+          <Input placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
+        </div>
+        <Button size="sm" onClick={addCert} className="text-xs">Add</Button>
+      </div>
+
+      <div className="space-y-2.5">
+        {certs.map(c => (
+          <div key={c.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
+            {editId === c.id ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Input value={editForm.name} onChange={e => setEditForm((f: any) => ({ ...f, name: e.target.value }))} className="text-sm" />
+                  <Input value={editForm.organization} onChange={e => setEditForm((f: any) => ({ ...f, organization: e.target.value }))} className="text-sm" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Input placeholder="Year" value={editForm.year} onChange={e => setEditForm((f: any) => ({ ...f, year: e.target.value }))} className="text-sm" />
+                  <Input placeholder="Code" value={editForm.code} onChange={e => setEditForm((f: any) => ({ ...f, code: e.target.value }))} className="text-sm" />
+                  <Input placeholder="URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
+                </div>
+                <div className="flex gap-1.5">
+                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{c.name}</p>
+                  <p className="text-xs text-muted-foreground">{c.organization} · {c.year}</p>
+                  {c.code && <p className="text-[10px] font-mono text-primary/70 mt-0.5">Code: {c.code}</p>}
+                </div>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(c)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteCert(c.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Content ─── */
 const ContentTab = () => {
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-
   const keys = ["about_text", "hero_subtitle", "footer_text"];
 
   useEffect(() => { fetchContent(); }, []);
@@ -183,24 +371,25 @@ const ContentTab = () => {
     const value = content[key] || "";
     const { error } = await supabase.from("portfolio_content").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
     if (error) { toast.error(error.message); return; }
-    toast.success(`${key} saved`);
+    toast.success("Saved");
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {keys.map(key => (
-        <div key={key} className="glass rounded-lg p-4 space-y-2">
-          <label className="text-sm font-medium capitalize">{key.replace(/_/g, " ")}</label>
-          <Textarea value={content[key] || ""} onChange={e => setContent(c => ({ ...c, [key]: e.target.value }))} rows={3} />
-          <Button size="sm" onClick={() => saveContent(key)}>Save</Button>
+        <div key={key} className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2">
+          <label className="text-xs font-medium capitalize text-muted-foreground">{key.replace(/_/g, " ")}</label>
+          <Textarea value={content[key] || ""} onChange={e => setContent(c => ({ ...c, [key]: e.target.value }))} rows={3} className="text-sm" />
+          <Button size="sm" onClick={() => saveContent(key)} className="text-xs">Save</Button>
         </div>
       ))}
     </div>
   );
 };
 
+/* ─── Resume ─── */
 const ResumeTab = () => {
   const [uploading, setUploading] = useState(false);
   const [files, setFiles] = useState<any[]>([]);
@@ -218,33 +407,30 @@ const ResumeTab = () => {
     setUploading(true);
     const fileName = `resume_${Date.now()}_${file.name}`;
     const { error } = await supabase.storage.from("resumes").upload(fileName, file);
-    if (error) { toast.error(error.message); } else { toast.success("Resume uploaded!"); fetchFiles(); }
+    if (error) { toast.error(error.message); } else { toast.success("Uploaded!"); fetchFiles(); }
     setUploading(false);
   };
 
   const deleteFile = async (name: string) => {
     await supabase.storage.from("resumes").remove([name]);
     fetchFiles();
-    toast.success("File deleted");
+    toast.success("Deleted");
   };
 
-  const getPublicUrl = (name: string) => {
-    const { data } = supabase.storage.from("resumes").getPublicUrl(name);
-    return data.publicUrl;
-  };
+  const getPublicUrl = (name: string) => supabase.storage.from("resumes").getPublicUrl(name).data.publicUrl;
 
   return (
     <div className="space-y-4">
-      <div className="glass rounded-lg p-4">
-        <h3 className="font-semibold mb-3">Upload Resume</h3>
-        <Input type="file" accept=".pdf,.doc,.docx" onChange={handleUpload} disabled={uploading} />
-        {uploading && <p className="text-sm text-muted-foreground mt-2">Uploading...</p>}
+      <div className="rounded-xl border border-border/40 bg-card/40 p-4">
+        <h3 className="text-sm font-medium mb-2.5">Upload Resume</h3>
+        <Input type="file" accept=".pdf,.doc,.docx" onChange={handleUpload} disabled={uploading} className="text-sm" />
+        {uploading && <p className="text-xs text-muted-foreground mt-2">Uploading...</p>}
       </div>
       <div className="space-y-2">
         {files.map(f => (
-          <div key={f.name} className="glass rounded-lg p-3 flex justify-between items-center">
-            <a href={getPublicUrl(f.name)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">{f.name}</a>
-            <Button variant="ghost" size="icon" onClick={() => deleteFile(f.name)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+          <div key={f.name} className="rounded-lg border border-border/40 bg-card/40 p-3 flex justify-between items-center">
+            <a href={getPublicUrl(f.name)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs truncate">{f.name}</a>
+            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => deleteFile(f.name)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
           </div>
         ))}
       </div>

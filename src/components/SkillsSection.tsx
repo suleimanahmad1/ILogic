@@ -9,54 +9,42 @@ const skills = [
   { category: "Cloud", icon: Cloud, items: ["Microsoft Azure", "AWS"] },
 ];
 
-const SkillsSection = () => {
-  return (
-    <section id="skills" className="section-padding bg-muted/30">
-      <div className="container mx-auto max-w-5xl">
-        <motion.div
-          initial={{ y: 40, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
-          <h2 className="text-3xl md:text-4xl font-bold mb-2">
-            Tech <span className="text-gradient">Stack</span>
-          </h2>
-          <div className="w-16 h-1 bg-primary rounded-full mb-10" />
+const SkillsSection = () => (
+  <section id="skills" className="section-padding bg-muted/20">
+    <div className="container mx-auto max-w-5xl">
+      <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
+        <h2 className="text-3xl md:text-4xl font-bold mb-2">
+          Tech <span className="text-gradient">Stack</span>
+        </h2>
+        <div className="w-12 h-0.5 bg-primary/60 rounded-full mb-10" />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {skills.map((group, gi) => (
-              <motion.div
-                key={group.category}
-                initial={{ y: 30, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: gi * 0.1, duration: 0.5 }}
-                className="glass rounded-2xl p-6 hover:glow-border transition-all duration-300 group"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <group.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <h3 className="font-mono text-sm text-primary tracking-wider uppercase">{group.category}</h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {group.items.map((skill) => (
-                    <span
-                      key={skill}
-                      className="bg-muted/50 border border-border/50 px-3 py-1.5 rounded-lg text-sm text-secondary-foreground hover:border-primary/50 hover:text-primary transition-all duration-300 cursor-default"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-};
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {skills.map((group, gi) => (
+            <motion.div
+              key={group.category}
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: gi * 0.08, duration: 0.4 }}
+              className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-5 hover:border-primary/30 transition-all duration-300"
+            >
+              <div className="flex items-center gap-2.5 mb-4">
+                <group.icon className="w-4 h-4 text-primary" />
+                <h3 className="font-mono text-xs text-primary tracking-wider uppercase">{group.category}</h3>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {group.items.map((skill) => (
+                  <span key={skill} className="text-[11px] px-2.5 py-1 rounded-full border border-border/50 text-secondary-foreground/80 hover:border-primary/40 hover:text-primary transition-all duration-300 cursor-default">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  </section>
+);
 
 export default SkillsSection;

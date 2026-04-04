@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      certificates: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          name: string
+          organization: string
+          sort_order: number | null
+          updated_at: string
+          url: string | null
+          year: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          organization: string
+          sort_order?: number | null
+          updated_at?: string
+          url?: string | null
+          year: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization?: string
+          sort_order?: number | null
+          updated_at?: string
+          url?: string | null
+          year?: string
+        }
+        Relationships: []
+      }
       contact_messages: {
         Row: {
           created_at: string
@@ -63,8 +99,10 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          github_url: string | null
           id: string
           image_url: string | null
+          live_url: string | null
           sort_order: number | null
           tech_stack: string[] | null
           title: string
@@ -74,8 +112,10 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          github_url?: string | null
           id?: string
           image_url?: string | null
+          live_url?: string | null
           sort_order?: number | null
           tech_stack?: string[] | null
           title: string
@@ -85,8 +125,10 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          github_url?: string | null
           id?: string
           image_url?: string | null
+          live_url?: string | null
           sort_order?: number | null
           tech_stack?: string[] | null
           title?: string
