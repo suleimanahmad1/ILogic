@@ -45,9 +45,16 @@ const ProjectsSection = () => {
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.4 }}
-                className="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-5 hover:border-primary/30 transition-all duration-300"
+                className="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden hover:border-primary/30 transition-all duration-300"
               >
+                {project.image_url && (
+                  <div className="aspect-video overflow-hidden bg-muted/20">
+                    <img src={project.image_url} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  </div>
+                )}
+                <div className="p-5">
                 <h3 className="font-semibold text-foreground mb-2 text-sm">{project.title}</h3>
+
                 <p className="text-xs text-muted-foreground leading-relaxed mb-4">{project.description}</p>
 
                 {project.tech_stack?.length > 0 && (
