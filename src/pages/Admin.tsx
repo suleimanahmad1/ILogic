@@ -237,6 +237,17 @@ const ProjectsTab = () => {
                   <Input placeholder="Live URL" value={editForm.live_url} onChange={e => setEditForm((f: any) => ({ ...f, live_url: e.target.value }))} className="text-sm" />
                   <Input placeholder="Other URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
                 </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border/40 cursor-pointer text-xs hover:bg-muted/40">
+                    <Upload className="w-3.5 h-3.5" /> {uploading ? "Uploading..." : "Replace Image"}
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      const url = await uploadImage(file);
+                      if (url) { setEditForm((f: any) => ({ ...f, image_url: url })); toast.success("Image uploaded"); }
+                    }} />
+                  </label>
+                  {editForm.image_url && <img src={editForm.image_url} alt="" className="w-10 h-10 rounded object-cover" />}
+                </div>
                 <div className="flex gap-1.5">
                   <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
@@ -244,7 +255,9 @@ const ProjectsTab = () => {
               </div>
             ) : (
               <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex gap-3">
+                  {p.image_url && <img src={p.image_url} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />}
+                  <div className="min-w-0">
                   <p className="font-medium text-sm">{p.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
                   {p.tech_stack?.length > 0 && <p className="text-[10px] text-primary mt-1">{p.tech_stack.join(", ")}</p>}
@@ -253,7 +266,9 @@ const ProjectsTab = () => {
                     {p.live_url && <span>Live ✓</span>}
                     {p.url && <span>URL ✓</span>}
                   </div>
+                  </div>
                 </div>
+
                 <div className="flex gap-0.5 flex-shrink-0">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(p)}><Edit2 className="w-3.5 h-3.5" /></Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteProject(p.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
