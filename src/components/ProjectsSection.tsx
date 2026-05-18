@@ -82,7 +82,9 @@ const ProjectsSection = () => {
                     </a>
                   )}
                 </div>
+                </div>
               </motion.div>
+
             ))}
           </div>
         </motion.div>
