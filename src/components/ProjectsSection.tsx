@@ -29,13 +29,16 @@ const ProjectsSection = () => {
   }, []);
 
   return (
-    <section id="projects" className="section-padding">
-      <div className="container mx-auto max-w-5xl">
+    <section id="projects" className="section-padding relative overflow-hidden">
+      <div className="orb w-[450px] h-[450px] bg-accent/8 top-1/3 -left-32" />
+      <div className="container mx-auto max-w-6xl relative">
         <motion.div initial={{ y: 40, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-          <h2 className="text-3xl md:text-4xl font-bold mb-2">
-            <span className="text-gradient">Projects</span>
+          <span className="kicker">03 — Selected Work</span>
+          <h2 className="section-heading">
+            <span className="text-gradient">Projects</span> & experiments.
           </h2>
-          <div className="w-12 h-0.5 bg-primary/60 rounded-full mb-10" />
+          <p className="section-sub">A glimpse into systems I've shipped — from RAG pipelines to multi-modal AI.</p>
+
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {projects.map((project, i) => (
