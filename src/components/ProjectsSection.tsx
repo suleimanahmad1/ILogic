@@ -48,47 +48,51 @@ const ProjectsSection = () => {
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.4 }}
-                className="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden hover:border-primary/30 transition-all duration-300"
+                className="group relative rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden hover:border-primary/40 hover:-translate-y-1 transition-all duration-300"
               >
+                <div className="absolute top-0 left-0 h-px w-0 bg-gradient-to-r from-primary to-accent group-hover:w-full transition-all duration-500" />
                 {project.image_url && (
-                  <div className="aspect-video overflow-hidden bg-muted/20">
+                  <div className="aspect-video overflow-hidden bg-muted/20 relative">
                     <img src={project.image_url} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                   </div>
                 )}
-                <div className="p-5">
-                <h3 className="font-semibold text-foreground mb-2 text-sm">{project.title}</h3>
-
-                <p className="text-xs text-muted-foreground leading-relaxed mb-4">{project.description}</p>
-
-                {project.tech_stack?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {project.tech_stack.map((t: string) => (
-                      <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{t}</span>
-                    ))}
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-mono text-[10px] text-primary/60 tracking-widest">#{String(i + 1).padStart(2, "0")}</span>
+                    <div className="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                      {project.github_url && (
+                        <a href={project.github_url} onClick={(e) => openExternal(e, project.github_url)} aria-label="GitHub" className="text-muted-foreground hover:text-primary transition-colors">
+                          <GithubIcon className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {project.live_url && (
+                        <a href={project.live_url} onClick={(e) => openExternal(e, project.live_url)} aria-label="Live demo" className="text-muted-foreground hover:text-primary transition-colors">
+                          <Globe className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {project.url && !project.live_url && (
+                        <a href={project.url} onClick={(e) => openExternal(e, project.url)} aria-label="External link" className="text-muted-foreground hover:text-primary transition-colors">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
                   </div>
-                )}
 
-                <div className="flex gap-2">
-                  {project.github_url && (
-                    <a href={project.github_url} onClick={(e) => openExternal(e, project.github_url)} className="text-muted-foreground hover:text-primary transition-colors">
-                      <GithubIcon className="w-4 h-4" />
-                    </a>
+                  <h3 className="font-semibold text-foreground mb-2 text-base group-hover:text-primary transition-colors">{project.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-4 line-clamp-3">{project.description}</p>
+
+                  {project.tech_stack?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {project.tech_stack.map((t: string) => (
+                        <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary/80 border border-primary/15 font-mono">{t}</span>
+                      ))}
+                    </div>
                   )}
-                  {project.live_url && (
-                    <a href={project.live_url} onClick={(e) => openExternal(e, project.live_url)} className="text-muted-foreground hover:text-primary transition-colors">
-                      <Globe className="w-4 h-4" />
-                    </a>
-                  )}
-                  {project.url && !project.live_url && (
-                    <a href={project.url} onClick={(e) => openExternal(e, project.url)} className="text-muted-foreground hover:text-primary transition-colors">
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
-                </div>
                 </div>
               </motion.div>
-
             ))}
+
           </div>
         </motion.div>
       </div>
