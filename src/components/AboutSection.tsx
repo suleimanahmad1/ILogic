@@ -7,17 +7,17 @@ const cards = [
 ];
 
 const AboutSection = () => (
-  <section id="about" className="section-padding">
-    <div className="container mx-auto max-w-4xl">
+  <section id="about" className="section-padding relative">
+    <div className="container mx-auto max-w-5xl">
       <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-        <h2 className="text-3xl md:text-4xl font-bold mb-2">
-          <span className="text-gradient">About</span> Me
+        <span className="kicker">01 — About</span>
+        <h2 className="section-heading">
+          Engineering <span className="text-gradient">intelligent</span> systems.
         </h2>
-        <div className="w-12 h-0.5 bg-primary/60 rounded-full mb-8" />
-
-        <p className="text-base text-secondary-foreground/80 leading-relaxed mb-10 max-w-2xl">
-          AI & Full Stack Engineer with 3+ years of experience building intelligent, automated systems — bridging sophisticated AI backends with intuitive interfaces.
+        <p className="section-sub">
+          AI & Full Stack Engineer with 3+ years building intelligent, automated systems — bridging sophisticated AI backends with intuitive interfaces.
         </p>
+
 
         <div className="grid md:grid-cols-3 gap-4">
           {cards.map((item, i) => (
