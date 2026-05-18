@@ -10,13 +10,16 @@ const skills = [
 ];
 
 const SkillsSection = () => (
-  <section id="skills" className="section-padding bg-muted/20">
-    <div className="container mx-auto max-w-5xl">
+  <section id="skills" className="section-padding bg-muted/10 relative overflow-hidden">
+    <div className="orb w-[400px] h-[400px] bg-primary/5 -top-20 right-0" />
+    <div className="container mx-auto max-w-5xl relative">
       <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-        <h2 className="text-3xl md:text-4xl font-bold mb-2">
-          Tech <span className="text-gradient">Stack</span>
+        <span className="kicker">02 — Tech Stack</span>
+        <h2 className="section-heading">
+          Tools I <span className="text-gradient">build</span> with.
         </h2>
-        <div className="w-12 h-0.5 bg-primary/60 rounded-full mb-10" />
+        <p className="section-sub">A curated set of languages, frameworks, and platforms I reach for daily.</p>
+
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {skills.map((group, gi) => (

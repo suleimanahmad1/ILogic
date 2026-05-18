@@ -33,13 +33,16 @@ const EducationSection = () => {
   }, []);
 
   return (
-    <section id="education" className="section-padding bg-muted/20">
-      <div className="container mx-auto max-w-4xl">
+    <section id="education" className="section-padding bg-muted/10 relative overflow-hidden">
+      <div className="orb w-[400px] h-[400px] bg-primary/5 bottom-0 right-0" />
+      <div className="container mx-auto max-w-5xl relative">
         <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-          <h2 className="text-3xl md:text-4xl font-bold mb-2">
-            Education & <span className="text-gradient">Certifications</span>
+          <span className="kicker">04 — Education</span>
+          <h2 className="section-heading">
+            Learning, <span className="text-gradient">always</span>.
           </h2>
-          <div className="w-12 h-0.5 bg-primary/60 rounded-full mb-10" />
+          <p className="section-sub">Academic foundation and certifications that shape my work.</p>
+
 
           <div className="grid md:grid-cols-2 gap-10">
             <div>
