@@ -115,9 +115,10 @@ const MessagesTab = () => {
 const ProjectsTab = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "" });
+  const [form, setForm] = useState({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "", image_url: "" });
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => { fetchProjects(); }, []);
 
@@ -125,6 +126,20 @@ const ProjectsTab = () => {
     const { data } = await supabase.from("projects").select("*").order("sort_order");
     setProjects(data || []);
     setLoading(false);
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("project-images").upload(path, file);
+      if (error) { toast.error(error.message); return null; }
+      const { data } = supabase.storage.from("project-images").getPublicUrl(path);
+      return data.publicUrl;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const addProject = async () => {
@@ -136,9 +151,10 @@ const ProjectsTab = () => {
       url: form.url || null,
       github_url: form.github_url || null,
       live_url: form.live_url || null,
+      image_url: form.image_url || null,
     });
     if (error) { toast.error(error.message); return; }
-    setForm({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "" });
+    setForm({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "", image_url: "" });
     fetchProjects();
     toast.success("Project added");
   };
@@ -152,6 +168,7 @@ const ProjectsTab = () => {
       url: p.url || "",
       github_url: p.github_url || "",
       live_url: p.live_url || "",
+      image_url: p.image_url || "",
     });
   };
 
@@ -164,6 +181,7 @@ const ProjectsTab = () => {
       url: editForm.url || null,
       github_url: editForm.github_url || null,
       live_url: editForm.live_url || null,
+      image_url: editForm.image_url || null,
     }).eq("id", editId);
     if (error) { toast.error(error.message); return; }
     setEditId(null);
@@ -191,8 +209,20 @@ const ProjectsTab = () => {
           <Input placeholder="Live URL (optional)" value={form.live_url} onChange={e => setForm(f => ({ ...f, live_url: e.target.value }))} className="text-sm" />
           <Input placeholder="Other URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
         </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border/40 cursor-pointer text-xs hover:bg-muted/40">
+            <Upload className="w-3.5 h-3.5" /> {uploading ? "Uploading..." : "Upload Image"}
+            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0]; if (!file) return;
+              const url = await uploadImage(file);
+              if (url) { setForm(f => ({ ...f, image_url: url })); toast.success("Image uploaded"); }
+            }} />
+          </label>
+          {form.image_url && <img src={form.image_url} alt="" className="w-10 h-10 rounded object-cover" />}
+        </div>
         <Button size="sm" onClick={addProject} className="text-xs">Add</Button>
       </div>
+
 
       <div className="space-y-2.5">
         {projects.map(p => (
