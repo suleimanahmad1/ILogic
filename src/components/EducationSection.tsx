@@ -80,13 +80,17 @@ const EducationSection = () => {
                     className="rounded-lg border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 hover:border-primary/30 transition-all duration-300"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium text-foreground text-sm">{cert.name}</p>
                         <p className="text-[11px] text-muted-foreground">{cert.organization} · {cert.year}</p>
+                        {cert.description && (
+                          <p className="text-[11px] text-muted-foreground/80 mt-1 leading-relaxed">{cert.description}</p>
+                        )}
                         {cert.code && (
                           <p className="text-[10px] font-mono text-primary/70 mt-1">Code: {cert.code}</p>
                         )}
                       </div>
+
                       {cert.url && (
                         <a href={cert.url} onClick={(e) => openExternal(e, cert.url)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0 mt-0.5">
                           <ExternalLink className="w-3.5 h-3.5" />
