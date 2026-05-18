@@ -76,4 +76,27 @@
   .section-padding {
     @apply py-20 md:py-28 px-6;
   }
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%);
+  }
+  .orb {
+    @apply absolute rounded-full blur-3xl pointer-events-none;
+  }
+  .kicker {
+    @apply inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase text-primary/80 mb-4;
+  }
+  .kicker::before {
+    content: "";
+    @apply block w-6 h-px bg-primary/60;
+  }
+  .section-heading {
+    @apply text-3xl md:text-5xl font-bold tracking-tight mb-3;
+  }
+  .section-sub {
+    @apply text-sm text-muted-foreground mb-12 max-w-xl;
+  }
 }
