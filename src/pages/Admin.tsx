@@ -375,6 +375,8 @@ const CertificatesTab = () => {
                   <Input placeholder="Code" value={editForm.code} onChange={e => setEditForm((f: any) => ({ ...f, code: e.target.value }))} className="text-sm" />
                   <Input placeholder="URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
                 </div>
+                <Textarea placeholder="Description" value={editForm.description} onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
+
                 <div className="flex gap-1.5">
                   <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
