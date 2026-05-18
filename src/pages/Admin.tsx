@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X } from "lucide-react";
+import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X, Upload } from "lucide-react";
 
 type Tab = "messages" | "projects" | "certificates" | "content" | "resume";
 
@@ -115,9 +115,10 @@ const MessagesTab = () => {
 const ProjectsTab = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "" });
+  const [form, setForm] = useState({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "", image_url: "" });
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => { fetchProjects(); }, []);
 
@@ -125,6 +126,20 @@ const ProjectsTab = () => {
     const { data } = await supabase.from("projects").select("*").order("sort_order");
     setProjects(data || []);
     setLoading(false);
+  };
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("project-images").upload(path, file);
+      if (error) { toast.error(error.message); return null; }
+      const { data } = supabase.storage.from("project-images").getPublicUrl(path);
+      return data.publicUrl;
+    } finally {
+      setUploading(false);
+    }
   };
 
   const addProject = async () => {
@@ -136,9 +151,10 @@ const ProjectsTab = () => {
       url: form.url || null,
       github_url: form.github_url || null,
       live_url: form.live_url || null,
+      image_url: form.image_url || null,
     });
     if (error) { toast.error(error.message); return; }
-    setForm({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "" });
+    setForm({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "", image_url: "" });
     fetchProjects();
     toast.success("Project added");
   };
@@ -152,6 +168,7 @@ const ProjectsTab = () => {
       url: p.url || "",
       github_url: p.github_url || "",
       live_url: p.live_url || "",
+      image_url: p.image_url || "",
     });
   };
 
@@ -164,6 +181,7 @@ const ProjectsTab = () => {
       url: editForm.url || null,
       github_url: editForm.github_url || null,
       live_url: editForm.live_url || null,
+      image_url: editForm.image_url || null,
     }).eq("id", editId);
     if (error) { toast.error(error.message); return; }
     setEditId(null);
@@ -191,8 +209,20 @@ const ProjectsTab = () => {
           <Input placeholder="Live URL (optional)" value={form.live_url} onChange={e => setForm(f => ({ ...f, live_url: e.target.value }))} className="text-sm" />
           <Input placeholder="Other URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
         </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border/40 cursor-pointer text-xs hover:bg-muted/40">
+            <Upload className="w-3.5 h-3.5" /> {uploading ? "Uploading..." : "Upload Image"}
+            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0]; if (!file) return;
+              const url = await uploadImage(file);
+              if (url) { setForm(f => ({ ...f, image_url: url })); toast.success("Image uploaded"); }
+            }} />
+          </label>
+          {form.image_url && <img src={form.image_url} alt="" className="w-10 h-10 rounded object-cover" />}
+        </div>
         <Button size="sm" onClick={addProject} className="text-xs">Add</Button>
       </div>
+
 
       <div className="space-y-2.5">
         {projects.map(p => (
@@ -207,6 +237,17 @@ const ProjectsTab = () => {
                   <Input placeholder="Live URL" value={editForm.live_url} onChange={e => setEditForm((f: any) => ({ ...f, live_url: e.target.value }))} className="text-sm" />
                   <Input placeholder="Other URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
                 </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border/40 cursor-pointer text-xs hover:bg-muted/40">
+                    <Upload className="w-3.5 h-3.5" /> {uploading ? "Uploading..." : "Replace Image"}
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0]; if (!file) return;
+                      const url = await uploadImage(file);
+                      if (url) { setEditForm((f: any) => ({ ...f, image_url: url })); toast.success("Image uploaded"); }
+                    }} />
+                  </label>
+                  {editForm.image_url && <img src={editForm.image_url} alt="" className="w-10 h-10 rounded object-cover" />}
+                </div>
                 <div className="flex gap-1.5">
                   <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
@@ -214,7 +255,9 @@ const ProjectsTab = () => {
               </div>
             ) : (
               <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex gap-3">
+                  {p.image_url && <img src={p.image_url} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />}
+                  <div className="min-w-0">
                   <p className="font-medium text-sm">{p.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
                   {p.tech_stack?.length > 0 && <p className="text-[10px] text-primary mt-1">{p.tech_stack.join(", ")}</p>}
@@ -223,7 +266,9 @@ const ProjectsTab = () => {
                     {p.live_url && <span>Live ✓</span>}
                     {p.url && <span>URL ✓</span>}
                   </div>
+                  </div>
                 </div>
+
                 <div className="flex gap-0.5 flex-shrink-0">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(p)}><Edit2 className="w-3.5 h-3.5" /></Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteProject(p.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
@@ -241,7 +286,7 @@ const ProjectsTab = () => {
 const CertificatesTab = () => {
   const [certs, setCerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: "", organization: "", year: "", code: "", url: "" });
+  const [form, setForm] = useState({ name: "", organization: "", year: "", code: "", url: "", description: "" });
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
 
@@ -261,16 +306,17 @@ const CertificatesTab = () => {
       year: form.year,
       code: form.code || null,
       url: form.url || null,
+      description: form.description || null,
     });
     if (error) { toast.error(error.message); return; }
-    setForm({ name: "", organization: "", year: "", code: "", url: "" });
+    setForm({ name: "", organization: "", year: "", code: "", url: "", description: "" });
     fetchCerts();
     toast.success("Certificate added");
   };
 
   const startEdit = (c: any) => {
     setEditId(c.id);
-    setEditForm({ name: c.name, organization: c.organization, year: c.year, code: c.code || "", url: c.url || "" });
+    setEditForm({ name: c.name, organization: c.organization, year: c.year, code: c.code || "", url: c.url || "", description: c.description || "" });
   };
 
   const saveEdit = async () => {
@@ -281,6 +327,7 @@ const CertificatesTab = () => {
       year: editForm.year,
       code: editForm.code || null,
       url: editForm.url || null,
+      description: editForm.description || null,
     }).eq("id", editId);
     if (error) { toast.error(error.message); return; }
     setEditId(null);
@@ -309,8 +356,10 @@ const CertificatesTab = () => {
           <Input placeholder="Code (optional)" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className="text-sm" />
           <Input placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
         </div>
+        <Textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
         <Button size="sm" onClick={addCert} className="text-xs">Add</Button>
       </div>
+
 
       <div className="space-y-2.5">
         {certs.map(c => (
@@ -326,6 +375,8 @@ const CertificatesTab = () => {
                   <Input placeholder="Code" value={editForm.code} onChange={e => setEditForm((f: any) => ({ ...f, code: e.target.value }))} className="text-sm" />
                   <Input placeholder="URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
                 </div>
+                <Textarea placeholder="Description" value={editForm.description} onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
+
                 <div className="flex gap-1.5">
                   <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
                   <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
