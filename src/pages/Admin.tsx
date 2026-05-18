@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X } from "lucide-react";
+import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X, Upload } from "lucide-react";
 
 type Tab = "messages" | "projects" | "certificates" | "content" | "resume";
 
