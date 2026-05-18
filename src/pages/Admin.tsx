@@ -286,7 +286,7 @@ const ProjectsTab = () => {
 const CertificatesTab = () => {
   const [certs, setCerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: "", organization: "", year: "", code: "", url: "" });
+  const [form, setForm] = useState({ name: "", organization: "", year: "", code: "", url: "", description: "" });
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
 
@@ -306,16 +306,17 @@ const CertificatesTab = () => {
       year: form.year,
       code: form.code || null,
       url: form.url || null,
+      description: form.description || null,
     });
     if (error) { toast.error(error.message); return; }
-    setForm({ name: "", organization: "", year: "", code: "", url: "" });
+    setForm({ name: "", organization: "", year: "", code: "", url: "", description: "" });
     fetchCerts();
     toast.success("Certificate added");
   };
 
   const startEdit = (c: any) => {
     setEditId(c.id);
-    setEditForm({ name: c.name, organization: c.organization, year: c.year, code: c.code || "", url: c.url || "" });
+    setEditForm({ name: c.name, organization: c.organization, year: c.year, code: c.code || "", url: c.url || "", description: c.description || "" });
   };
 
   const saveEdit = async () => {
@@ -326,6 +327,7 @@ const CertificatesTab = () => {
       year: editForm.year,
       code: editForm.code || null,
       url: editForm.url || null,
+      description: editForm.description || null,
     }).eq("id", editId);
     if (error) { toast.error(error.message); return; }
     setEditId(null);
@@ -354,8 +356,10 @@ const CertificatesTab = () => {
           <Input placeholder="Code (optional)" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className="text-sm" />
           <Input placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
         </div>
+        <Textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
         <Button size="sm" onClick={addCert} className="text-xs">Add</Button>
       </div>
+
 
       <div className="space-y-2.5">
         {certs.map(c => (
