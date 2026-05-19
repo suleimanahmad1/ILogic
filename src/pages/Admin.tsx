@@ -491,4 +491,112 @@ const ResumeTab = () => {
   );
 };
 
+/* ─── Skills ─── */
+const ICON_OPTIONS = ["Code2", "Layers", "Database", "Wrench", "Cloud", "Sparkles", "Cpu", "Brain", "Zap", "Box"];
+
+const SkillsTab = () => {
+  const [skills, setSkills] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ category: "", items: "", icon: "Code2" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+
+  useEffect(() => { fetchSkills(); }, []);
+
+  const fetchSkills = async () => {
+    const { data } = await supabase.from("skills").select("*").order("sort_order");
+    setSkills(data || []);
+    setLoading(false);
+  };
+
+  const addSkill = async () => {
+    if (!form.category.trim()) { toast.error("Category required"); return; }
+    const { error } = await supabase.from("skills").insert({
+      category: form.category,
+      icon: form.icon,
+      items: form.items.split(",").map(s => s.trim()).filter(Boolean),
+      sort_order: skills.length + 1,
+    });
+    if (error) { toast.error(error.message); return; }
+    setForm({ category: "", items: "", icon: "Code2" });
+    fetchSkills();
+    toast.success("Skill category added");
+  };
+
+  const startEdit = (s: any) => {
+    setEditId(s.id);
+    setEditForm({ category: s.category, items: s.items?.join(", ") || "", icon: s.icon || "Code2" });
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    const { error } = await supabase.from("skills").update({
+      category: editForm.category,
+      icon: editForm.icon,
+      items: editForm.items.split(",").map((s: string) => s.trim()).filter(Boolean),
+    }).eq("id", editId);
+    if (error) { toast.error(error.message); return; }
+    setEditId(null);
+    fetchSkills();
+    toast.success("Updated");
+  };
+
+  const deleteSkill = async (id: string) => {
+    await supabase.from("skills").delete().eq("id", id);
+    setSkills(prev => prev.filter(s => s.id !== id));
+    toast.success("Deleted");
+  };
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
+        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Skill Category</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <Input placeholder="Category (e.g. Languages)" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="text-sm" />
+          <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} className="text-sm rounded-md border border-border/40 bg-background px-3 py-1.5">
+            {ICON_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
+          </select>
+        </div>
+        <Input placeholder="Skills (comma separated, e.g. Python, React, FastAPI)" value={form.items} onChange={e => setForm(f => ({ ...f, items: e.target.value }))} className="text-sm" />
+        <Button size="sm" onClick={addSkill} className="text-xs">Add</Button>
+      </div>
+
+      <div className="space-y-2.5">
+        {skills.map(s => (
+          <div key={s.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
+            {editId === s.id ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Input value={editForm.category} onChange={e => setEditForm((f: any) => ({ ...f, category: e.target.value }))} className="text-sm" />
+                  <select value={editForm.icon} onChange={e => setEditForm((f: any) => ({ ...f, icon: e.target.value }))} className="text-sm rounded-md border border-border/40 bg-background px-3 py-1.5">
+                    {ICON_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                </div>
+                <Input value={editForm.items} onChange={e => setEditForm((f: any) => ({ ...f, items: e.target.value }))} className="text-sm" />
+                <div className="flex gap-1.5">
+                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{s.category} <span className="text-[10px] text-muted-foreground font-mono ml-1">{s.icon}</span></p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.items?.join(", ")}</p>
+                </div>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(s)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteSkill(s.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default Admin;
