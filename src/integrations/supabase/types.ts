@@ -140,6 +140,36 @@ export type Database = {
         }
         Relationships: []
       }
+      skills: {
+        Row: {
+          category: string
+          created_at: string
+          icon: string | null
+          id: string
+          items: string[]
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          items?: string[]
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          items?: string[]
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
