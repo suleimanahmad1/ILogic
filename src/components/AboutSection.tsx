@@ -2,8 +2,8 @@ import { motion } from "framer-motion";
 
 const cards = [
   { title: "AI & Data", desc: "Python, RAG, CrewAI, LangChain — with Vector DBs like Qdrant, FAISS, and Pinecone." },
-  { title: "Full Stack", desc: "Scalable web architectures using FastAPI and React with modern tooling." },
-  { title: "Automation", desc: "End-to-end workflows using n8n, Supabase, and Azure AI Foundry." },
+  { title: "Full Stack", desc: "Scalable web architectures using React, Next.js, and FastAPI with modern tooling." },
+  { title: "MERN Developer", desc: "MongoDB, Express, React, and Node.js — building end-to-end JavaScript applications." },
 ];
 
 const AboutSection = () => (
