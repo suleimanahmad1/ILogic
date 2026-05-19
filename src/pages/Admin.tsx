@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X, Upload } from "lucide-react";
+import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X, Upload, Sparkles } from "lucide-react";
 
-type Tab = "messages" | "projects" | "certificates" | "content" | "resume";
+type Tab = "messages" | "projects" | "certificates" | "skills" | "content" | "resume";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -35,6 +35,7 @@ const Admin = () => {
     { key: "messages", label: "Messages", icon: <Mail className="w-3.5 h-3.5" /> },
     { key: "projects", label: "Projects", icon: <FolderOpen className="w-3.5 h-3.5" /> },
     { key: "certificates", label: "Certificates", icon: <Award className="w-3.5 h-3.5" /> },
+    { key: "skills", label: "Skills", icon: <Sparkles className="w-3.5 h-3.5" /> },
     { key: "content", label: "Content", icon: <FileText className="w-3.5 h-3.5" /> },
     { key: "resume", label: "Resume", icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   ];
@@ -66,6 +67,7 @@ const Admin = () => {
         {tab === "messages" && <MessagesTab />}
         {tab === "projects" && <ProjectsTab />}
         {tab === "certificates" && <CertificatesTab />}
+        {tab === "skills" && <SkillsTab />}
         {tab === "content" && <ContentTab />}
         {tab === "resume" && <ResumeTab />}
       </div>
