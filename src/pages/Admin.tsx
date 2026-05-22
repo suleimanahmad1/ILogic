@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X, Upload, Sparkles } from "lucide-react";
+import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X, Upload, Sparkles, BarChart3, MessageSquare, PenLine } from "lucide-react";
 
-type Tab = "messages" | "projects" | "certificates" | "skills" | "content" | "resume";
+type Tab = "analytics" | "messages" | "projects" | "certificates" | "skills" | "testimonials" | "blog" | "content" | "resume";
 
 const Admin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("messages");
+  const [tab, setTab] = useState<Tab>("analytics");
 
   useEffect(() => { checkAuth(); }, []);
 
@@ -32,10 +32,13 @@ const Admin = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background text-foreground text-sm">Loading...</div>;
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: "analytics", label: "Analytics", icon: <BarChart3 className="w-3.5 h-3.5" /> },
     { key: "messages", label: "Messages", icon: <Mail className="w-3.5 h-3.5" /> },
     { key: "projects", label: "Projects", icon: <FolderOpen className="w-3.5 h-3.5" /> },
     { key: "certificates", label: "Certificates", icon: <Award className="w-3.5 h-3.5" /> },
     { key: "skills", label: "Skills", icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { key: "testimonials", label: "Testimonials", icon: <MessageSquare className="w-3.5 h-3.5" /> },
+    { key: "blog", label: "Blog", icon: <PenLine className="w-3.5 h-3.5" /> },
     { key: "content", label: "Content", icon: <FileText className="w-3.5 h-3.5" /> },
     { key: "resume", label: "Resume", icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   ];
@@ -64,10 +67,13 @@ const Admin = () => {
           ))}
         </div>
 
+        {tab === "analytics" && <AnalyticsTab />}
         {tab === "messages" && <MessagesTab />}
         {tab === "projects" && <ProjectsTab />}
         {tab === "certificates" && <CertificatesTab />}
         {tab === "skills" && <SkillsTab />}
+        {tab === "testimonials" && <TestimonialsTab />}
+        {tab === "blog" && <BlogTab />}
         {tab === "content" && <ContentTab />}
         {tab === "resume" && <ResumeTab />}
       </div>
@@ -589,6 +595,263 @@ const SkillsTab = () => {
                 <div className="flex gap-0.5 flex-shrink-0">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(s)}><Edit2 className="w-3.5 h-3.5" /></Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteSkill(s.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Analytics ─── */
+const AnalyticsTab = () => {
+  const [stats, setStats] = useState<{ views7: number; viewsTotal: number; messages: number; projects: number; posts: number } | null>(null);
+  const [recent, setRecent] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+      const [v7, vAll, msgs, projs, posts, last] = await Promise.all([
+        supabase.from("page_views").select("*", { count: "exact", head: true }).gte("created_at", since),
+        supabase.from("page_views").select("*", { count: "exact", head: true }),
+        supabase.from("contact_messages").select("*", { count: "exact", head: true }),
+        supabase.from("projects").select("*", { count: "exact", head: true }),
+        supabase.from("blog_posts").select("*", { count: "exact", head: true }),
+        supabase.from("page_views").select("path,referrer,created_at").order("created_at", { ascending: false }).limit(8),
+      ]);
+      setStats({
+        views7: v7.count || 0,
+        viewsTotal: vAll.count || 0,
+        messages: msgs.count || 0,
+        projects: projs.count || 0,
+        posts: posts.count || 0,
+      });
+      setRecent(last.data || []);
+    })();
+  }, []);
+
+  if (!stats) return <p className="text-sm text-muted-foreground">Loading...</p>;
+
+  const cards = [
+    { label: "Views (7d)", value: stats.views7 },
+    { label: "Views total", value: stats.viewsTotal },
+    { label: "Messages", value: stats.messages },
+    { label: "Projects", value: stats.projects },
+    { label: "Blog posts", value: stats.posts },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+        {cards.map(c => (
+          <div key={c.label} className="rounded-xl border border-border/40 bg-card/40 p-4">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">{c.label}</p>
+            <p className="text-2xl font-semibold mt-1.5">{c.value}</p>
+          </div>
+        ))}
+      </div>
+      <div>
+        <h3 className="text-sm font-medium mb-2.5">Recent Views</h3>
+        <div className="space-y-1.5">
+          {recent.length === 0 ? <p className="text-xs text-muted-foreground">No views yet.</p> : recent.map((r, i) => (
+            <div key={i} className="rounded-md border border-border/40 bg-card/30 p-2.5 text-xs flex justify-between gap-3">
+              <span className="font-mono text-primary/80 truncate">{r.path}</span>
+              <span className="text-muted-foreground truncate flex-1 text-right">{r.referrer || "direct"}</span>
+              <span className="text-muted-foreground/60 text-[10px] flex-shrink-0">{new Date(r.created_at).toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Testimonials ─── */
+const TestimonialsTab = () => {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ name: "", role: "", company: "", quote: "", avatar_url: "" });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+
+  useEffect(() => { fetch(); }, []);
+  const fetch = async () => {
+    const { data } = await supabase.from("testimonials").select("*").order("sort_order");
+    setItems(data || []); setLoading(false);
+  };
+  const add = async () => {
+    if (!form.name.trim() || !form.quote.trim()) { toast.error("Name & quote required"); return; }
+    const { error } = await supabase.from("testimonials").insert({
+      name: form.name, role: form.role || null, company: form.company || null,
+      quote: form.quote, avatar_url: form.avatar_url || null,
+    });
+    if (error) { toast.error(error.message); return; }
+    setForm({ name: "", role: "", company: "", quote: "", avatar_url: "" });
+    fetch(); toast.success("Added");
+  };
+  const startEdit = (t: any) => { setEditId(t.id); setEditForm({ name: t.name, role: t.role || "", company: t.company || "", quote: t.quote, avatar_url: t.avatar_url || "" }); };
+  const saveEdit = async () => {
+    if (!editId) return;
+    const { error } = await supabase.from("testimonials").update({
+      name: editForm.name, role: editForm.role || null, company: editForm.company || null,
+      quote: editForm.quote, avatar_url: editForm.avatar_url || null,
+    }).eq("id", editId);
+    if (error) { toast.error(error.message); return; }
+    setEditId(null); fetch(); toast.success("Updated");
+  };
+  const del = async (id: string) => { await supabase.from("testimonials").delete().eq("id", id); fetch(); toast.success("Deleted"); };
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
+        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Testimonial</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="text-sm" />
+          <Input placeholder="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="text-sm" />
+          <Input placeholder="Company" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} className="text-sm" />
+        </div>
+        <Textarea placeholder="Quote" value={form.quote} onChange={e => setForm(f => ({ ...f, quote: e.target.value }))} rows={3} className="text-sm" />
+        <Input placeholder="Avatar URL (optional)" value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} className="text-sm" />
+        <Button size="sm" onClick={add} className="text-xs">Add</Button>
+      </div>
+
+      <div className="space-y-2.5">
+        {items.map(t => (
+          <div key={t.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
+            {editId === t.id ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Input value={editForm.name} onChange={e => setEditForm((f: any) => ({ ...f, name: e.target.value }))} className="text-sm" />
+                  <Input value={editForm.role} onChange={e => setEditForm((f: any) => ({ ...f, role: e.target.value }))} className="text-sm" />
+                  <Input value={editForm.company} onChange={e => setEditForm((f: any) => ({ ...f, company: e.target.value }))} className="text-sm" />
+                </div>
+                <Textarea value={editForm.quote} onChange={e => setEditForm((f: any) => ({ ...f, quote: e.target.value }))} rows={3} className="text-sm" />
+                <Input value={editForm.avatar_url} onChange={e => setEditForm((f: any) => ({ ...f, avatar_url: e.target.value }))} className="text-sm" />
+                <div className="flex gap-1.5">
+                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{t.name} <span className="text-muted-foreground font-normal text-xs">· {t.role}{t.company && ` @ ${t.company}`}</span></p>
+                  <p className="text-xs text-muted-foreground mt-1 italic">"{t.quote}"</p>
+                </div>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(t)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => del(t.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Blog ─── */
+const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+const BlogTab = () => {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ title: "", slug: "", excerpt: "", content: "", cover_url: "", tags: "", published: false });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+
+  useEffect(() => { fetch(); }, []);
+  const fetch = async () => {
+    const { data } = await supabase.from("blog_posts").select("*").order("created_at", { ascending: false });
+    setPosts(data || []); setLoading(false);
+  };
+  const add = async () => {
+    if (!form.title.trim()) { toast.error("Title required"); return; }
+    const slug = form.slug.trim() || slugify(form.title);
+    const { error } = await supabase.from("blog_posts").insert({
+      title: form.title, slug, excerpt: form.excerpt || null, content: form.content || null,
+      cover_url: form.cover_url || null,
+      tags: form.tags.split(",").map(s => s.trim()).filter(Boolean),
+      published: form.published,
+    });
+    if (error) { toast.error(error.message); return; }
+    setForm({ title: "", slug: "", excerpt: "", content: "", cover_url: "", tags: "", published: false });
+    fetch(); toast.success("Post added");
+  };
+  const startEdit = (p: any) => {
+    setEditId(p.id);
+    setEditForm({ title: p.title, slug: p.slug, excerpt: p.excerpt || "", content: p.content || "", cover_url: p.cover_url || "", tags: (p.tags || []).join(", "), published: !!p.published });
+  };
+  const saveEdit = async () => {
+    if (!editId) return;
+    const { error } = await supabase.from("blog_posts").update({
+      title: editForm.title, slug: editForm.slug || slugify(editForm.title),
+      excerpt: editForm.excerpt || null, content: editForm.content || null,
+      cover_url: editForm.cover_url || null,
+      tags: editForm.tags.split(",").map((s: string) => s.trim()).filter(Boolean),
+      published: editForm.published,
+    }).eq("id", editId);
+    if (error) { toast.error(error.message); return; }
+    setEditId(null); fetch(); toast.success("Updated");
+  };
+  const del = async (id: string) => { await supabase.from("blog_posts").delete().eq("id", id); fetch(); toast.success("Deleted"); };
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
+        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Blog Post</h3>
+        <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <Input placeholder="Slug (auto if empty)" value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} className="text-sm" />
+          <Input placeholder="Cover Image URL (optional)" value={form.cover_url} onChange={e => setForm(f => ({ ...f, cover_url: e.target.value }))} className="text-sm" />
+        </div>
+        <Textarea placeholder="Excerpt" value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} rows={2} className="text-sm" />
+        <Textarea placeholder="Content (markdown)" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={5} className="text-sm" />
+        <Input placeholder="Tags (comma separated)" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} className="text-sm" />
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <input type="checkbox" checked={form.published} onChange={e => setForm(f => ({ ...f, published: e.target.checked }))} /> Published
+        </label>
+        <Button size="sm" onClick={add} className="text-xs">Add</Button>
+      </div>
+
+      <div className="space-y-2.5">
+        {posts.map(p => (
+          <div key={p.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
+            {editId === p.id ? (
+              <div className="space-y-2">
+                <Input value={editForm.title} onChange={e => setEditForm((f: any) => ({ ...f, title: e.target.value }))} className="text-sm" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Input value={editForm.slug} onChange={e => setEditForm((f: any) => ({ ...f, slug: e.target.value }))} className="text-sm" />
+                  <Input value={editForm.cover_url} onChange={e => setEditForm((f: any) => ({ ...f, cover_url: e.target.value }))} className="text-sm" />
+                </div>
+                <Textarea value={editForm.excerpt} onChange={e => setEditForm((f: any) => ({ ...f, excerpt: e.target.value }))} rows={2} className="text-sm" />
+                <Textarea value={editForm.content} onChange={e => setEditForm((f: any) => ({ ...f, content: e.target.value }))} rows={5} className="text-sm" />
+                <Input value={editForm.tags} onChange={e => setEditForm((f: any) => ({ ...f, tags: e.target.value }))} className="text-sm" />
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={editForm.published} onChange={e => setEditForm((f: any) => ({ ...f, published: e.target.checked }))} /> Published
+                </label>
+                <div className="flex gap-1.5">
+                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{p.title} {p.published ? <span className="text-[10px] text-primary ml-1">● live</span> : <span className="text-[10px] text-muted-foreground ml-1">draft</span>}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground">/{p.slug}</p>
+                  {p.excerpt && <p className="text-xs text-muted-foreground mt-1">{p.excerpt}</p>}
+                </div>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(p)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => del(p.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
                 </div>
               </div>
             )}
