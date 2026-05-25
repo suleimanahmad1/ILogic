@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { isAdminUser } from "@/lib/adminAuth";
+import { signOutIfNotAllowed, UNAUTHORIZED_LOGIN_MESSAGE } from "@/lib/allowedAdmin";
 import AdminImageField from "@/components/admin/AdminImageField";
 import { adminInput, adminSelect } from "@/components/admin/adminUi";
 import {
@@ -18,25 +19,20 @@ import {
   AdminEntryCard,
 } from "@/components/admin/AdminFormLayout";
 import { sortByPinned } from "@/lib/sortByPinned";
-import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, MessageSquareText, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff } from "lucide-react";
+import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, Inbox, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff } from "lucide-react";
+import AdminInboxPage from "@/components/admin/AdminInboxPage";
+import type { ContactMessage } from "@/lib/contactInbox";
+import { getUnreadCount, removeMessageFromRead, subscribeInboxRead } from "@/lib/inboxRead";
 
 const db = supabase as any;
 const STORAGE_BUCKET = "website-images";
-type ContactMessage = {
-  id: string;
-  name: string;
-  email: string;
-  message: string;
-  created_at?: string;
-};
-
 type EducationRow = { id: string; institute: string; degree: string; start_date: string | null; end_date: string | null; year: string | null; image_url: string | null; sort_order: number | null };
 type SkillCategoryRow = { id: string; name: string; sort_order: number | null };
 type SkillItemRow = { id: string; category_id: string; name: string; sort_order: number | null };
 type CertificationRow = { id: string; image_url: string | null; image?: string | null; course_name?: string | null; name?: string | null; code: string | null; url: string | null; description: string | null; is_pinned?: boolean | null; created_at?: string | null };
 type ProjectRow = { id: string; project_name?: string | null; title?: string | null; technology?: string | null; tech_stack?: string[] | null; image_url: string | null; github_url: string | null; live_url: string | null; description: string | null; url: string | null; is_pinned?: boolean | null; created_at?: string | null };
 
-type PageKey = "contact" | "skills" | "education" | "certifications" | "projects";
+type PageKey = "contact" | "inbox" | "skills" | "education" | "certifications" | "projects";
 
 type PageConfig = { id: PageKey; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -67,9 +63,11 @@ const Admin = () => {
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const pages: PageConfig[] = useMemo(() => ([
     { id: "contact", label: "Contact", icon: Mail },
+    { id: "inbox", label: "Inbox", icon: Inbox },
     { id: "skills", label: "Skills", icon: SquareStack },
     { id: "education", label: "Education", icon: GraduationCap },
     { id: "certifications", label: "Certifications", icon: Award },
@@ -81,13 +79,25 @@ const Admin = () => {
     void loadAdminData();
   }, []);
 
+  useEffect(() => {
+    const syncUnread = () => setUnreadCount(getUnreadCount(messages));
+    syncUnread();
+    return subscribeInboxRead(syncUnread);
+  }, [messages]);
+
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       navigate("/admin-login");
       return;
     }
+    if (!(await signOutIfNotAllowed(user.email))) {
+      toast.error(UNAUTHORIZED_LOGIN_MESSAGE);
+      navigate("/admin-login");
+      return;
+    }
     if (!(await isAdminUser(user.id))) {
+      await supabase.auth.signOut();
       toast.error("Admin verify nahi hua. Supabase par fix-admin-login.sql chalao, phir refresh karke login.");
       navigate("/admin-login");
       return;
@@ -103,7 +113,7 @@ const Admin = () => {
       db.from("skills_items").select("*").order("sort_order", { ascending: true }),
       db.from("certifications").select("*").order("created_at", { ascending: true }),
       db.from("projects").select("*").order("created_at", { ascending: true }),
-      db.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(6),
+      db.from("contact_messages").select("*").order("created_at", { ascending: false }),
     ]);
 
     const contact = contactRes.data as { id: string; email: string; phone: string; address: string } | null;
@@ -353,14 +363,30 @@ const Admin = () => {
     void loadAdminData();
   };
 
-  const resendMessage = (message: ContactMessage) => {
-    const subject = encodeURIComponent(`Re: ${message.name}`);
-    const body = encodeURIComponent(`Hi ${message.name},\n\n${message.message}\n\nBest regards,`);
-    window.open(`mailto:${message.email}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer");
+  const deleteInboxMessage = async (id: string): Promise<boolean> => {
+    const { error } = await db.from("contact_messages").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    setMessages((prev) => prev.filter((item) => item.id !== id));
+    removeMessageFromRead(id);
+    toast.success("Message removed");
+    return true;
   };
 
   const pageButtonClass = (page: PageKey) =>
     `w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-all ${activePage === page ? "border-primary/40 bg-primary/10 text-foreground" : "border-transparent bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground"}`;
+
+  const renderInboxPage = () => (
+    <AdminInboxPage
+      messages={messages}
+      onDelete={deleteInboxMessage}
+      onRefresh={() => void loadAdminData()}
+      onMessageRead={() => setUnreadCount(getUnreadCount(messages))}
+      replyFromEmail={contactInfo.email}
+    />
+  );
 
   const renderContactPage = () => (
     <AdminFormCard icon={Mail} title="Contact info" subtitle="Shown on the site footer and contact section.">
@@ -694,42 +720,25 @@ const Admin = () => {
               <div className="space-y-1">
                 {pages.map((page) => {
                   const Icon = page.icon;
+                  const badge = page.id === "inbox" && unreadCount > 0 ? unreadCount : null;
                   return (
                     <button key={page.id} onClick={() => setActivePage(page.id)} className={pageButtonClass(page.id)}>
                       <Icon className={`w-4 h-4 ${activePage === page.id ? "text-primary" : "text-muted-foreground"}`} />
-                      <span className="font-medium text-sm">{page.label}</span>
+                      <span className="font-medium text-sm flex-1">{page.label}</span>
+                      {badge !== null ? (
+                        <span className="text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded-full bg-primary/20 text-primary">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
-              </div>
-
-              <div className="mt-4 rounded-lg border border-border/50 bg-card/40 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <MessageSquareText className="w-3.5 h-3.5 text-primary" />
-                  <h2 className="font-medium text-xs">Inbox</h2>
-                </div>
-                <div className="space-y-3">
-                  {messages.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No contact messages yet.</p>
-                  ) : messages.map((message) => (
-                    <div key={message.id} className="rounded-xl border border-border/40 bg-background/40 p-3">
-                      <p className="text-xs font-medium text-foreground truncate">{message.name}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{message.email}</p>
-                      <p className="text-[11px] text-muted-foreground mt-2 line-clamp-3">{message.message}</p>
-                      <div className="mt-3 flex items-center gap-2">
-                        <Button size="sm" variant="outline" className="h-7 text-[11px] border-border/40" onClick={() => resendMessage(message)}>Resend</Button>
-                        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={async () => { const { error } = await db.from("contact_messages").delete().eq("id", message.id); if (error) return toast.error(error.message); setMessages((prev) => prev.filter((item) => item.id !== message.id)); toast.success("Removed"); }}>
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </aside>
 
             <section className="p-4 md:p-6 bg-background/50 min-h-[420px]">
               {activePage === "contact" && renderContactPage()}
+              {activePage === "inbox" && renderInboxPage()}
               {activePage === "skills" && renderSkillsPage()}
               {activePage === "education" && renderEducationPage()}
               {activePage === "certifications" && renderCertificationsPage()}

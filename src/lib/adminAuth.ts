@@ -1,14 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isAllowedAdminEmail } from "@/lib/allowedAdmin";
 
 export const isAdminUser = async (userId: string): Promise<boolean> => {
   const { data: { session } } = await supabase.auth.getSession();
+  let email: string | undefined;
   if (!session?.user) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || user.id !== userId) return false;
+    email = user.email;
   } else if (session.user.id !== userId) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || user.id !== userId) return false;
+    email = user.email;
+  } else {
+    email = session.user.email;
   }
+
+  if (!isAllowedAdminEmail(email)) return false;
 
   const { data: amAdmin, error: amAdminError } = await supabase.rpc("am_i_admin");
   if (!amAdminError && amAdmin === true) return true;

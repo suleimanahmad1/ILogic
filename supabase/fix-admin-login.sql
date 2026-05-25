@@ -8,7 +8,15 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT public.has_role(auth.uid(), 'admin'::public.app_role);
+  SELECT EXISTS (
+    SELECT 1
+    FROM auth.users u
+    WHERE u.id = auth.uid()
+      AND lower(trim(u.email)) = ANY (
+        ARRAY[lower(trim('suleimanahmed1222@gmail.com'))]::text[]
+      )
+      AND public.has_role(auth.uid(), 'admin'::public.app_role)
+  );
 $$;
 
 GRANT EXECUTE ON FUNCTION public.am_i_admin() TO authenticated;

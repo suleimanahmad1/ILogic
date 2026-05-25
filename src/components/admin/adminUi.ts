@@ -9,6 +9,6 @@ export const adminFieldLabel =
 export const adminInput =
   "bg-background/50 border-border/50 focus-visible:ring-primary/30 h-10";
 export const adminSelect =
-  "h-10 w-full rounded-md border border-border/50 bg-background/50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
+  "h-10 w-full rounded-lg border-2 border-border bg-card text-foreground px-3 pr-9 text-sm font-medium shadow-sm cursor-pointer appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50";
 export const adminSectionTitle =
   "text-[10px] font-mono uppercase tracking-[0.2em] text-primary/70 mb-3";

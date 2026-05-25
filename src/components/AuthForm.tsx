@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isAllowedAdminEmail, UNAUTHORIZED_LOGIN_MESSAGE } from "@/lib/allowedAdmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,10 @@ const AuthForm = ({ onSuccess, onCancel }: Props) => {
       if (error) throw error;
       const user = data.user ?? data.session?.user ?? (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error("Login successful, but user session was not created.");
+      if (!isAllowedAdminEmail(user.email)) {
+        await supabase.auth.signOut();
+        throw new Error(UNAUTHORIZED_LOGIN_MESSAGE);
+      }
       toast.success("Logged in successfully");
       onSuccess();
     } catch (err: unknown) {

@@ -15,7 +15,7 @@ const AuthModal = () => {
         <DialogHeader>
           <DialogTitle className="text-xl">Admin Login</DialogTitle>
           <DialogDescription>
-            Sign in with your admin email and password. New accounts are not available here.
+            Sign in with the authorized admin email only. Other accounts cannot access this panel.
           </DialogDescription>
         </DialogHeader>
         <AuthForm
