@@ -92,6 +92,30 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_info: {
+        Row: {
+          address: string | null
+          email: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          email?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          email?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contact_messages: {
         Row: {
           created_at: string
@@ -113,6 +137,39 @@ export type Database = {
           id?: string
           message?: string
           name?: string
+        }
+        Relationships: []
+      }
+      education: {
+        Row: {
+          degree: string
+          id: string
+          institute: string
+          end_date: string | null
+          start_date: string | null
+          sort_order: number | null
+          updated_at: string
+          year: string
+        }
+        Insert: {
+          degree: string
+          id?: string
+          institute: string
+          end_date?: string | null
+          start_date?: string | null
+          sort_order?: number | null
+          updated_at?: string
+          year: string
+        }
+        Update: {
+          degree?: string
+          id?: string
+          institute?: string
+          end_date?: string | null
+          start_date?: string | null
+          sort_order?: number | null
+          updated_at?: string
+          year?: string
         }
         Relationships: []
       }
@@ -168,22 +225,28 @@ export type Database = {
           github_url: string | null
           id: string
           image_url: string | null
+          is_pinned: boolean
           live_url: string | null
+          project_name: string | null
           sort_order: number | null
           tech_stack: string[] | null
+          technology: string | null
           title: string
           updated_at: string
           url: string | null
         }
         Insert: {
           created_at?: string
-          description: string
+          description?: string
           github_url?: string | null
           id?: string
           image_url?: string | null
+          is_pinned?: boolean
           live_url?: string | null
+          project_name?: string | null
           sort_order?: number | null
           tech_stack?: string[] | null
+          technology?: string | null
           title: string
           updated_at?: string
           url?: string | null
@@ -194,12 +257,131 @@ export type Database = {
           github_url?: string | null
           id?: string
           image_url?: string | null
+          is_pinned?: boolean
           live_url?: string | null
+          project_name?: string | null
           sort_order?: number | null
           tech_stack?: string[] | null
+          technology?: string | null
           title?: string
           updated_at?: string
           url?: string | null
+        }
+        Relationships: []
+      }
+      skills_categories: {
+        Row: {
+          id: string
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      skills_items: {
+        Row: {
+          category_id: string
+          id: string
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          id?: string
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          id?: string
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skills_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "skills_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certifications: {
+        Row: {
+          code: string
+          course_name: string
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          is_pinned: boolean
+          sort_order: number | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          code: string
+          course_name: string
+          created_at?: string
+          description: string
+          id?: string
+          image_url: string
+          is_pinned?: boolean
+          sort_order?: number | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          code?: string
+          course_name?: string
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string
+          is_pinned?: boolean
+          sort_order?: number | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      success_events: {
+        Row: {
+          description: string
+          id: string
+          images: string[]
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          description: string
+          id?: string
+          images?: string[]
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          description?: string
+          id?: string
+          images?: string[]
+          sort_order?: number | null
+          updated_at?: string
         }
         Relationships: []
       }

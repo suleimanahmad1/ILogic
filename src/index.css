@@ -53,33 +53,45 @@
   }
 
   .light {
-    --background: 0 0% 100%;
-    --foreground: 220 25% 10%;
+    --background: 220 18% 94%;
+    --foreground: 222 32% 11%;
 
-    --card: 220 20% 98%;
-    --card-foreground: 220 25% 10%;
+    --card: 220 16% 99%;
+    --card-foreground: 222 32% 11%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover: 220 16% 99%;
+    --popover-foreground: 222 32% 11%;
 
-    --primary: 174 72% 38%;
+    --primary: 174 68% 34%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 94%;
-    --secondary-foreground: 220 25% 15%;
+    --secondary: 220 14% 90%;
+    --secondary-foreground: 222 28% 16%;
 
-    --muted: 220 14% 95%;
-    --muted-foreground: 220 10% 40%;
+    --muted: 220 12% 91%;
+    --muted-foreground: 220 12% 38%;
 
-    --accent: 160 60% 38%;
+    --accent: 160 55% 32%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 50%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 88%;
-    --input: 220 14% 88%;
-    --ring: 174 72% 38%;
+    --border: 220 14% 78%;
+    --input: 220 14% 82%;
+    --ring: 174 68% 34%;
+
+    --glow-primary: 0 0 28px hsl(174 68% 34% / 0.18);
+    --glow-accent: 0 0 28px hsl(160 55% 32% / 0.14);
+
+    --sidebar-background: 220 16% 97%;
+    --sidebar-foreground: 222 32% 11%;
+    --sidebar-primary: 174 68% 34%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 90%;
+    --sidebar-accent-foreground: 222 28% 16%;
+    --sidebar-border: 220 14% 78%;
+    --sidebar-ring: 174 68% 34%;
   }
 }
 
@@ -94,6 +106,14 @@
   body {
     @apply bg-background text-foreground font-display;
   }
+
+  .light body {
+    background-image:
+      radial-gradient(ellipse 90% 55% at 50% -8%, hsl(174 55% 88% / 0.45), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 100% 20%, hsl(160 40% 90% / 0.35), transparent 50%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(220 16% 92%));
+    background-attachment: fixed;
+  }
 }
 
 @layer utilities {
@@ -107,8 +127,11 @@
   .glass {
     @apply bg-card/60 backdrop-blur-xl border border-border/50;
   }
+  .light .glass {
+    @apply bg-card/90 backdrop-blur-md border-border shadow-[0_4px_24px_-4px_hsl(220_25%_20%/0.08)];
+  }
   .section-padding {
-    @apply py-20 md:py-28 px-6;
+    @apply py-16 md:py-20 px-6;
   }
   .bg-grid {
     background-image:
@@ -117,8 +140,24 @@
     background-size: 48px 48px;
     mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 75%);
   }
+  .light .bg-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.55) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.55) 1px, transparent 1px);
+    mask-image: radial-gradient(ellipse 85% 65% at 50% 35%, black 25%, transparent 72%);
+  }
   .orb {
     @apply absolute rounded-full blur-3xl pointer-events-none;
+  }
+  .light .orb {
+    @apply opacity-80;
+  }
+  .light .glow-border {
+    box-shadow: var(--glow-primary);
+    @apply border-primary/35;
+  }
+  .light .kicker {
+    @apply text-primary;
   }
   .kicker {
     @apply inline-flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase text-primary/80 mb-4;

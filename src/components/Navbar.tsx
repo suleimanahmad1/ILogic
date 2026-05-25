@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Moon, Sun } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Menu, X, Moon, Sun, Shield } from "lucide-react";
+import { toast } from "sonner";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { isAdminUser } from "@/lib/adminAuth";
+import BrandLogo from "@/components/BrandLogo";
 
 const links = [
-  { label: "About", href: "#about", id: "about" },
   { label: "Skills", href: "#skills", id: "skills" },
   { label: "Projects", href: "#projects", id: "projects" },
-  { label: "Writing", href: "#writing", id: "writing" },
-  { label: "Voices", href: "#voices", id: "voices" },
+  { label: "About", href: "#about", id: "about" },
   { label: "Education", href: "#education", id: "education" },
 ];
 
@@ -16,6 +19,8 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState<string>("");
   const { theme, toggle } = useTheme();
+  const navigate = useNavigate();
+  const { user, openLogin } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -37,26 +42,55 @@ const Navbar = () => {
     return () => observer.disconnect();
   }, []);
 
+  const openAdmin = async () => {
+    if (!user) {
+      toast.error("Pehle Login Karein");
+      return;
+    }
+    if (!(await isAdminUser(user.id))) {
+      toast.error("Admin verify fail. Supabase par fix-admin-login.sql chalao.");
+      return;
+    }
+    navigate("/admin");
+  };
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "glass py-3" : "py-5"}`}>
       <div className="container mx-auto px-6 flex items-center justify-between">
-        <a href="#" className="text-xl font-bold text-gradient">SA</a>
+        <BrandLogo href="/" showName />
 
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-4">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className={`text-sm font-mono transition-colors relative ${
-                active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              {l.label}
-              {active === l.id && (
-                <span className="absolute -bottom-1.5 left-0 right-0 h-px bg-primary" />
-              )}
-            </a>
+            l.id === 'about' ? (
+              <Link key={l.href} to="/about-dashboard" className={`text-sm font-mono transition-colors relative ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>
+                {l.label}
+                {active === l.id && <span className="absolute -bottom-1.5 left-0 right-0 h-px bg-primary" />}
+              </Link>
+            ) : (
+              <a
+                key={l.href}
+                href={l.href}
+                className={`text-sm font-mono transition-colors relative ${
+                  active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                {l.label}
+                {active === l.id && (
+                  <span className="absolute -bottom-1.5 left-0 right-0 h-px bg-primary" />
+                )}
+              </a>
+            )
           ))}
+
+          <button
+            onClick={user ? openAdmin : openLogin}
+            className="inline-flex items-center justify-center rounded-full border border-border/40 p-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+            aria-label="Safeguard"
+            title="Safeguard"
+          >
+            <Shield className="w-3 h-3" />
+          </button>
+
           <button
             onClick={toggle}
             className="text-muted-foreground hover:text-primary transition-colors"
@@ -70,6 +104,14 @@ const Navbar = () => {
           <button onClick={toggle} className="text-foreground" aria-label="Toggle theme">
             {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
+          <button
+            onClick={user ? openAdmin : openLogin}
+            className="inline-flex items-center justify-center rounded-full border border-border/40 p-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
+            aria-label="Safeguard"
+            title="Safeguard"
+          >
+            <Shield className="w-3 h-3" />
+          </button>
           <button className="text-foreground" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -79,17 +121,21 @@ const Navbar = () => {
       {menuOpen && (
         <div className="md:hidden glass mt-2 mx-6 rounded-lg p-4 flex flex-col gap-4">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
-              className={`text-sm font-mono transition-colors ${
-                active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              {l.label}
-            </a>
+            l.id === 'about' ? (
+              <Link key={l.href} to="/about-dashboard" onClick={() => setMenuOpen(false)} className={`text-sm font-mono transition-colors ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>{l.label}</Link>
+            ) : (
+              <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className={`text-sm font-mono transition-colors ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>{l.label}</a>
+            )
           ))}
+          <button
+            onClick={() => {
+              setMenuOpen(false);
+              user ? openAdmin() : openLogin();
+            }}
+            className="text-sm font-mono text-muted-foreground hover:text-primary transition-colors text-left inline-flex items-center gap-2"
+          >
+            <Shield className="w-3.5 h-3.5" /> Safeguard
+          </button>
         </div>
       )}
     </nav>

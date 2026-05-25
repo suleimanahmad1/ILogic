@@ -1,32 +1,71 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ExternalLink, Github as GithubIcon, Globe } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { ExternalLink, Github as GithubIcon, Globe, Pin } from "lucide-react";
+import { useProjects } from "@/hooks/useSiteData";
+import { sortByPinned } from "@/lib/sortByPinned";
+import { LIST_INITIAL, LIST_LOAD_STEP } from "@/lib/loadMore";
+import { Button } from "@/components/ui/button";
+import PortfolioDetailDialog, { type DetailLink } from "@/components/PortfolioDetailDialog";
+
+type ProjectRow = {
+  id: string;
+  title?: string | null;
+  project_name?: string | null;
+  description?: string | null;
+  tech_stack?: string[] | null;
+  technology?: string | null;
+  github_url?: string | null;
+  live_url?: string | null;
+  url?: string | null;
+  image_url?: string | null;
+  image?: string | null;
+  is_pinned?: boolean | null;
+};
+
+type MappedProject = ProjectRow & {
+  title: string;
+  image_url: string | null;
+  tech: string;
+  github: string | null | undefined;
+  live: string | null | undefined;
+};
 
 const openExternal = (e: React.MouseEvent, url: string) => {
   e.preventDefault();
+  e.stopPropagation();
   window.open(url, "_blank", "noopener,noreferrer");
 };
 
-const fallbackProjects = [
-  { id: "1", title: "RAG Applications", description: "Retrieval-Augmented Generation systems using LangChain and vector databases", tech_stack: ["LangChain", "FAISS"], url: null, github_url: null, live_url: null },
-  { id: "2", title: "Resume Parser", description: "Intelligent document parsing and information extraction pipeline", tech_stack: ["Python", "NLP"], url: null, github_url: null, live_url: null },
-  { id: "3", title: "Sentiment Analysis", description: "NLP-powered sentiment classification and analysis tool", tech_stack: ["TensorFlow", "Python"], url: null, github_url: null, live_url: null },
-  { id: "4", title: "Road Accident Prediction", description: "ML model predicting road accidents using historical data", tech_stack: ["Scikit-learn"], url: null, github_url: null, live_url: null },
-  { id: "5", title: "Customer Support Agent", description: "AI-powered conversational agent for automated customer support", tech_stack: ["CrewAI", "FastAPI"], url: null, github_url: null, live_url: null },
-  { id: "6", title: "Image Captioning + Voice", description: "Multi-modal AI combining image captioning with voice synthesis", tech_stack: ["TensorFlow", "gTTS"], url: null, github_url: null, live_url: null },
-];
-
 const ProjectsSection = () => {
-  const [projects, setProjects] = useState<any[]>(fallbackProjects);
+  const projects = useProjects() as ProjectRow[];
+  const [visibleCount, setVisibleCount] = useState(LIST_INITIAL);
+  const [selected, setSelected] = useState<MappedProject | null>(null);
 
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase.from("projects").select("*").order("sort_order");
-      if (data && data.length > 0) setProjects(data);
-    };
-    fetch();
-  }, []);
+  const mappedProjects = useMemo(
+    () =>
+      sortByPinned(projects).map((project) => ({
+        ...project,
+        title: project.project_name || project.title || "Untitled Project",
+        image_url: project.image_url || project.image || null,
+        tech: project.technology || (project.tech_stack || []).join(", "),
+        github: project.github_url,
+        live: project.live_url,
+      })),
+    [projects]
+  );
+
+  const visibleProjects = mappedProjects.slice(0, visibleCount);
+  const hasMore = visibleCount < mappedProjects.length;
+
+  const projectLinks = (project: MappedProject): DetailLink[] => {
+    const links: DetailLink[] = [];
+    if (project.github) links.push({ label: "GitHub", href: project.github, variant: "github" });
+    if (project.live) links.push({ label: "Live demo", href: project.live, variant: "live" });
+    if (!project.github && !project.live && project.url) {
+      links.push({ label: "View project", href: project.url, variant: "external" });
+    }
+    return links;
+  };
 
   return (
     <section id="projects" className="section-padding relative overflow-hidden">
@@ -37,42 +76,56 @@ const ProjectsSection = () => {
           <h2 className="section-heading">
             <span className="text-gradient">Projects</span> & experiments.
           </h2>
-          <p className="section-sub">A glimpse into systems I've shipped — from RAG pipelines to multi-modal AI.</p>
-
+          <p className="section-sub">Click any project to read full details.</p>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {projects.map((project, i) => (
+            {visibleProjects.length ? visibleProjects.map((project, index) => (
               <motion.div
                 key={project.id}
+                role="button"
+                tabIndex={0}
                 initial={{ y: 20, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.4 }}
-                className="group relative rounded-2xl border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden hover:border-primary/40 hover:-translate-y-1 transition-all duration-300"
+                transition={{ delay: index * 0.08, duration: 0.4 }}
+                onClick={() => setSelected(project)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelected(project);
+                  }
+                }}
+                className={`group relative rounded-2xl border backdrop-blur-sm overflow-hidden hover:border-primary/40 hover:-translate-y-1 transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+                  project.is_pinned ? "border-primary/40 bg-card/50" : "border-border/40 bg-card/30"
+                }`}
               >
                 <div className="absolute top-0 left-0 h-px w-0 bg-gradient-to-r from-primary to-accent group-hover:w-full transition-all duration-500" />
+                {project.is_pinned ? (
+                  <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-mono text-primary">
+                    <Pin className="w-3 h-3" /> Pinned
+                  </span>
+                ) : null}
                 {project.image_url && (
-                  <div className="aspect-video overflow-hidden bg-muted/20 relative">
-                    <img src={project.image_url} alt={project.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
+                  <div className="min-h-[10rem] max-h-56 flex items-center justify-center overflow-hidden bg-muted/20 p-2">
+                    <img src={project.image_url} alt={project.title || "Project"} className="max-w-full max-h-52 w-auto object-contain" />
                   </div>
                 )}
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="font-mono text-[10px] text-primary/60 tracking-widest">#{String(i + 1).padStart(2, "0")}</span>
+                    <span className="font-mono text-[10px] text-primary/60 tracking-widest">#{String(index + 1).padStart(2, "0")}</span>
                     <div className="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                      {project.github_url && (
-                        <a href={project.github_url} onClick={(e) => openExternal(e, project.github_url)} aria-label="GitHub" className="text-muted-foreground hover:text-primary transition-colors">
+                      {project.github && (
+                        <a href={project.github} onClick={(e) => openExternal(e, project.github as string)} aria-label="GitHub" className="text-muted-foreground hover:text-primary transition-colors">
                           <GithubIcon className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {project.live_url && (
-                        <a href={project.live_url} onClick={(e) => openExternal(e, project.live_url)} aria-label="Live demo" className="text-muted-foreground hover:text-primary transition-colors">
+                      {project.live && (
+                        <a href={project.live} onClick={(e) => openExternal(e, project.live as string)} aria-label="Live demo" className="text-muted-foreground hover:text-primary transition-colors">
                           <Globe className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {project.url && !project.live_url && (
-                        <a href={project.url} onClick={(e) => openExternal(e, project.url)} aria-label="External link" className="text-muted-foreground hover:text-primary transition-colors">
+                      {!project.github && !project.live && project.url && (
+                        <a href={project.url} onClick={(e) => openExternal(e, project.url as string)} aria-label="External link" className="text-muted-foreground hover:text-primary transition-colors">
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       )}
@@ -80,22 +133,44 @@ const ProjectsSection = () => {
                   </div>
 
                   <h3 className="font-semibold text-foreground mb-2 text-base group-hover:text-primary transition-colors">{project.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-4 line-clamp-3">{project.description}</p>
-
-                  {project.tech_stack?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {project.tech_stack.map((t: string) => (
-                        <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary/80 border border-primary/15 font-mono">{t}</span>
-                      ))}
-                    </div>
-                  )}
+                  {project.technology ? <p className="text-[11px] text-primary/80 mb-2">Technology: {project.technology}</p> : null}
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{project.description || "Tap to view details."}</p>
+                  <p className="text-[10px] text-primary/60 mt-2 font-mono">Click to read more</p>
                 </div>
               </motion.div>
-            ))}
-
+            )) : (
+              <p className="text-sm text-muted-foreground">No projects added yet.</p>
+            )}
           </div>
+
+          {hasMore ? (
+            <div className="mt-6 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs px-4 border-border/50 bg-card/30 hover:border-primary/40"
+                onClick={() => setVisibleCount((n) => Math.min(n + LIST_LOAD_STEP, mappedProjects.length))}
+              >
+                Load more ({mappedProjects.length - visibleCount} left)
+              </Button>
+            </div>
+          ) : null}
         </motion.div>
       </div>
+
+      <PortfolioDetailDialog
+        open={!!selected}
+        onOpenChange={(open) => !open && setSelected(null)}
+        kind="project"
+        pinned={!!selected?.is_pinned}
+        title={selected?.title || ""}
+        subtitle={selected?.technology ? `Technology: ${selected.technology}` : selected?.tech || null}
+        imageUrl={selected?.image_url}
+        description={selected?.description}
+        meta={selected?.tech ? [{ label: "Stack", value: selected.tech }] : []}
+        links={selected ? projectLinks(selected) : []}
+      />
     </section>
   );
 };

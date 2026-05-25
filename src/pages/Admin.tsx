@@ -1,27 +1,129 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { LogOut, Trash2, Plus, Mail, FileText, LayoutDashboard, FolderOpen, Award, Edit2, Check, X, Upload, Sparkles, BarChart3, MessageSquare, PenLine } from "lucide-react";
+import { isAdminUser } from "@/lib/adminAuth";
+import AdminImageField from "@/components/admin/AdminImageField";
+import { adminInput, adminSelect } from "@/components/admin/adminUi";
+import {
+  AdminFormCard,
+  AdminField,
+  AdminFieldGrid,
+  AdminFormDivider,
+  AdminFormActions,
+  AdminListHeader,
+  AdminEntryCard,
+} from "@/components/admin/AdminFormLayout";
+import { sortByPinned } from "@/lib/sortByPinned";
+import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, MessageSquareText, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff } from "lucide-react";
 
-type Tab = "analytics" | "messages" | "projects" | "certificates" | "skills" | "testimonials" | "blog" | "content" | "resume";
+const db = supabase as any;
+const STORAGE_BUCKET = "website-images";
+type ContactMessage = {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  created_at?: string;
+};
+
+type EducationRow = { id: string; institute: string; degree: string; start_date: string | null; end_date: string | null; year: string | null; image_url: string | null; sort_order: number | null };
+type SkillCategoryRow = { id: string; name: string; sort_order: number | null };
+type SkillItemRow = { id: string; category_id: string; name: string; sort_order: number | null };
+type CertificationRow = { id: string; image_url: string | null; image?: string | null; course_name?: string | null; name?: string | null; code: string | null; url: string | null; description: string | null; is_pinned?: boolean | null; created_at?: string | null };
+type ProjectRow = { id: string; project_name?: string | null; title?: string | null; technology?: string | null; tech_stack?: string[] | null; image_url: string | null; github_url: string | null; live_url: string | null; description: string | null; url: string | null; is_pinned?: boolean | null; created_at?: string | null };
+
+type PageKey = "contact" | "skills" | "education" | "certifications" | "projects";
+
+type PageConfig = { id: PageKey; label: string; icon: React.ComponentType<{ className?: string }> };
 
 const Admin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("analytics");
+  const [activePage, setActivePage] = useState<PageKey>("contact");
 
-  useEffect(() => { checkAuth(); }, []);
+  const [contactId, setContactId] = useState<string | null>(null);
+  const [contactInfo, setContactInfo] = useState({ email: "", phone: "", address: "" });
+
+  const [education, setEducation] = useState<EducationRow[]>([]);
+  const [educationForm, setEducationForm] = useState({ institute: "", degree: "", startDate: "", endDate: "", year: "", image: "" });
+  const [editingEducationId, setEditingEducationId] = useState<string | null>(null);
+
+  const [skillCategories, setSkillCategories] = useState<SkillCategoryRow[]>([]);
+  const [skillItems, setSkillItems] = useState<SkillItemRow[]>([]);
+  const [skillCategoryName, setSkillCategoryName] = useState("");
+  const [skillItemForm, setSkillItemForm] = useState({ categoryId: "", name: "" });
+  const [editingSkillItemId, setEditingSkillItemId] = useState<string | null>(null);
+
+  const [certifications, setCertifications] = useState<CertificationRow[]>([]);
+  const [certForm, setCertForm] = useState({ image: "", courseName: "", code: "", url: "", description: "" });
+  const [editingCertificationId, setEditingCertificationId] = useState<string | null>(null);
+
+  const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [projectForm, setProjectForm] = useState({ image: "", projectName: "", technology: "", github: "", live: "", description: "" });
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+
+  const pages: PageConfig[] = useMemo(() => ([
+    { id: "contact", label: "Contact", icon: Mail },
+    { id: "skills", label: "Skills", icon: SquareStack },
+    { id: "education", label: "Education", icon: GraduationCap },
+    { id: "certifications", label: "Certifications", icon: Award },
+    { id: "projects", label: "Projects", icon: FolderOpen },
+  ]), []);
+
+  useEffect(() => {
+    checkAuth();
+    void loadAdminData();
+  }, []);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate("/admin-login"); return; }
-    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin");
-    if (!roles || roles.length === 0) { navigate("/admin-login"); return; }
+    if (!user) {
+      navigate("/admin-login");
+      return;
+    }
+    if (!(await isAdminUser(user.id))) {
+      toast.error("Admin verify nahi hua. Supabase par fix-admin-login.sql chalao, phir refresh karke login.");
+      navigate("/admin-login");
+      return;
+    }
     setLoading(false);
+  };
+
+  const loadAdminData = async () => {
+    const [contactRes, educationRes, categoriesRes, itemsRes, certRes, projectsRes, messagesRes] = await Promise.all([
+      db.from("contact_info").select("*").limit(1).maybeSingle(),
+      db.from("education").select("*").order("sort_order", { ascending: true }),
+      db.from("skills_categories").select("*").order("sort_order", { ascending: true }),
+      db.from("skills_items").select("*").order("sort_order", { ascending: true }),
+      db.from("certifications").select("*").order("created_at", { ascending: true }),
+      db.from("projects").select("*").order("created_at", { ascending: true }),
+      db.from("contact_messages").select("*").order("created_at", { ascending: false }).limit(6),
+    ]);
+
+    const contact = contactRes.data as { id: string; email: string; phone: string; address: string } | null;
+    setContactId(contact?.id ?? null);
+    setContactInfo({ email: contact?.email || "", phone: contact?.phone || "", address: contact?.address || "" });
+
+    setEducation((educationRes.data || []) as EducationRow[]);
+    setSkillCategories((categoriesRes.data || []) as SkillCategoryRow[]);
+    setSkillItems((itemsRes.data || []) as SkillItemRow[]);
+    setCertifications(sortByPinned((certRes.data || []) as CertificationRow[]));
+    setProjects(sortByPinned((projectsRes.data || []) as ProjectRow[]));
+    if (messagesRes.error) {
+      const msg = messagesRes.error.message;
+      if (/contact_messages/i.test(msg) && /schema cache|does not exist|not find/i.test(msg)) {
+        toast.error("Inbox table missing — run supabase/apply-contact-messages.sql in Supabase SQL Editor.", { id: "contact-messages-missing" });
+      }
+      setMessages([]);
+    } else {
+      setMessages((messagesRes.data || []) as ContactMessage[]);
+    }
   };
 
   const handleLogout = async () => {
@@ -29,835 +131,613 @@ const Admin = () => {
     navigate("/admin-login");
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background text-foreground text-sm">Loading...</div>;
-
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "analytics", label: "Analytics", icon: <BarChart3 className="w-3.5 h-3.5" /> },
-    { key: "messages", label: "Messages", icon: <Mail className="w-3.5 h-3.5" /> },
-    { key: "projects", label: "Projects", icon: <FolderOpen className="w-3.5 h-3.5" /> },
-    { key: "certificates", label: "Certificates", icon: <Award className="w-3.5 h-3.5" /> },
-    { key: "skills", label: "Skills", icon: <Sparkles className="w-3.5 h-3.5" /> },
-    { key: "testimonials", label: "Testimonials", icon: <MessageSquare className="w-3.5 h-3.5" /> },
-    { key: "blog", label: "Blog", icon: <PenLine className="w-3.5 h-3.5" /> },
-    { key: "content", label: "Content", icon: <FileText className="w-3.5 h-3.5" /> },
-    { key: "resume", label: "Resume", icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
-  ];
-
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/40 px-6 py-3.5 flex items-center justify-between bg-card/40 backdrop-blur-sm">
-        <h1 className="text-lg font-semibold text-gradient">Admin</h1>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs"><LogOut className="w-3.5 h-3.5 mr-1.5" /> Logout</Button>
-      </header>
-
-      <div className="container mx-auto px-4 py-5 max-w-4xl">
-        <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
-          {tabs.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                tab === t.key
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground border border-border/40"
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === "analytics" && <AnalyticsTab />}
-        {tab === "messages" && <MessagesTab />}
-        {tab === "projects" && <ProjectsTab />}
-        {tab === "certificates" && <CertificatesTab />}
-        {tab === "skills" && <SkillsTab />}
-        {tab === "testimonials" && <TestimonialsTab />}
-        {tab === "blog" && <BlogTab />}
-        {tab === "content" && <ContentTab />}
-        {tab === "resume" && <ResumeTab />}
-      </div>
-    </div>
-  );
-};
-
-/* ─── Messages ─── */
-const MessagesTab = () => {
-  const [messages, setMessages] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => { fetchMessages(); }, []);
-
-  const fetchMessages = async () => {
-    const { data } = await supabase.from("contact_messages").select("*").order("created_at", { ascending: false });
-    setMessages(data || []);
-    setLoading(false);
-  };
-
-  const deleteMessage = async (id: string) => {
-    await supabase.from("contact_messages").delete().eq("id", id);
-    setMessages(prev => prev.filter(m => m.id !== id));
-    toast.success("Deleted");
-  };
-
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">{messages.length} message(s)</p>
-      {messages.length === 0 ? <p className="text-sm text-muted-foreground">No messages yet.</p> : messages.map(m => (
-        <div key={m.id} className="rounded-lg border border-border/40 bg-card/40 p-4 flex justify-between items-start gap-3">
-          <div className="min-w-0">
-            <p className="font-medium text-sm truncate">{m.name} · <span className="text-muted-foreground">{m.email}</span></p>
-            <p className="text-xs text-muted-foreground mt-1.5 whitespace-pre-wrap">{m.message}</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-2">{new Date(m.created_at).toLocaleString()}</p>
-          </div>
-          <Button variant="ghost" size="icon" className="flex-shrink-0 h-7 w-7" onClick={() => deleteMessage(m.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-/* ─── Projects ─── */
-const ProjectsTab = () => {
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "", image_url: "" });
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
-  const [uploading, setUploading] = useState(false);
-
-  useEffect(() => { fetchProjects(); }, []);
-
-  const fetchProjects = async () => {
-    const { data } = await supabase.from("projects").select("*").order("sort_order");
-    setProjects(data || []);
-    setLoading(false);
-  };
-
-  const uploadImage = async (file: File): Promise<string | null> => {
-    setUploading(true);
-    try {
-      const ext = file.name.split(".").pop();
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from("project-images").upload(path, file);
-      if (error) { toast.error(error.message); return null; }
-      const { data } = supabase.storage.from("project-images").getPublicUrl(path);
-      return data.publicUrl;
-    } finally {
-      setUploading(false);
+  const uploadImage = async (file: File) => {
+    const ext = file.name.split(".").pop() || "png";
+    const path = `admin-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: true });
+    if (error) {
+      toast.error(error.message.toLowerCase().includes("bucket") ? `Storage bucket "${STORAGE_BUCKET}" not found.` : error.message);
+      return null;
     }
+    return supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
   };
 
-  const addProject = async () => {
-    if (!form.title.trim()) { toast.error("Title required"); return; }
-    const { error } = await supabase.from("projects").insert({
-      title: form.title,
-      description: form.description,
-      tech_stack: form.tech_stack.split(",").map(s => s.trim()).filter(Boolean),
-      url: form.url || null,
-      github_url: form.github_url || null,
-      live_url: form.live_url || null,
-      image_url: form.image_url || null,
+  const saveContact = async () => {
+    const payload = contactInfo;
+    const { data, error } = contactId
+      ? await db.from("contact_info").update(payload).eq("id", contactId).select("id").maybeSingle()
+      : await db.from("contact_info").insert(payload).select("id").maybeSingle();
+    if (error) return toast.error(error.message);
+    if (!contactId) setContactId(data?.id ?? null);
+    toast.success("Contact info saved");
+  };
+
+  const saveEducation = async () => {
+    if (!educationForm.institute.trim() || !educationForm.degree.trim()) {
+      return toast.error("Institute and degree are required");
+    }
+    const yearValue = educationForm.year.trim() || [educationForm.startDate.trim(), educationForm.endDate.trim()].filter(Boolean).join(" - ") || null;
+    const payload = {
+      institute: educationForm.institute.trim(),
+      degree: educationForm.degree.trim(),
+      start_date: educationForm.startDate.trim() || null,
+      end_date: educationForm.endDate.trim() || null,
+      year: yearValue,
+      image_url: educationForm.image.trim() || null,
+    };
+    const { error } = editingEducationId
+      ? await db.from("education").update(payload).eq("id", editingEducationId)
+      : await db.from("education").insert({ ...payload, sort_order: education.length + 1 });
+    if (error) return toast.error(error.message);
+    toast.success(editingEducationId ? "Education updated" : "Education added");
+    setEducationForm({ institute: "", degree: "", startDate: "", endDate: "", year: "", image: "" });
+    setEditingEducationId(null);
+    void loadAdminData();
+  };
+
+  const editEducation = (row: EducationRow) => {
+    setEditingEducationId(row.id);
+    setEducationForm({
+      institute: row.institute,
+      degree: row.degree,
+      startDate: row.start_date || "",
+      endDate: row.end_date || "",
+      year: row.year || "",
+      image: row.image_url || "",
     });
-    if (error) { toast.error(error.message); return; }
-    setForm({ title: "", description: "", tech_stack: "", url: "", github_url: "", live_url: "", image_url: "" });
-    fetchProjects();
-    toast.success("Project added");
+    setActivePage("education");
   };
 
-  const startEdit = (p: any) => {
-    setEditId(p.id);
-    setEditForm({
-      title: p.title,
-      description: p.description,
-      tech_stack: p.tech_stack?.join(", ") || "",
-      url: p.url || "",
-      github_url: p.github_url || "",
-      live_url: p.live_url || "",
-      image_url: p.image_url || "",
+  const deleteEducation = async (id: string) => {
+    const { error } = await db.from("education").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    void loadAdminData();
+  };
+
+  const saveSkillCategory = async () => {
+    if (!skillCategoryName.trim()) return toast.error("Category name is required");
+    const { error } = await db.from("skills_categories").insert({ name: skillCategoryName, sort_order: skillCategories.length + 1 });
+    if (error) return toast.error(error.message);
+    toast.success("Category added");
+    setSkillCategoryName("");
+    void loadAdminData();
+  };
+
+  const saveSkillItem = async () => {
+    if (!skillItemForm.categoryId || !skillItemForm.name.trim()) return toast.error("Category and skill name are required");
+    const payload = { category_id: skillItemForm.categoryId, name: skillItemForm.name };
+    const { error } = editingSkillItemId
+      ? await db.from("skills_items").update(payload).eq("id", editingSkillItemId)
+      : await db.from("skills_items").insert({ ...payload, sort_order: skillItems.length + 1 });
+    if (error) return toast.error(error.message);
+    toast.success(editingSkillItemId ? "Skill updated" : "Skill added");
+    setSkillItemForm({ categoryId: "", name: "" });
+    setEditingSkillItemId(null);
+    void loadAdminData();
+  };
+
+  const editSkillItem = (row: SkillItemRow) => {
+    setEditingSkillItemId(row.id);
+    setSkillItemForm({ categoryId: row.category_id, name: row.name });
+    setActivePage("skills");
+  };
+
+  const deleteSkillItem = async (id: string) => {
+    const { error } = await db.from("skills_items").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    void loadAdminData();
+  };
+
+  const deleteSkillCategory = async (id: string) => {
+    const { error } = await db.from("skills_categories").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Category deleted");
+    void loadAdminData();
+  };
+
+  const saveCertification = async () => {
+    if (!certForm.courseName.trim()) return toast.error("Course name is required");
+    const imageUrl = certForm.image.trim() || null;
+    const payload = {
+      image: imageUrl,
+      image_url: imageUrl,
+      course_name: certForm.courseName.trim(),
+      name: certForm.courseName.trim(),
+      code: certForm.code.trim() || null,
+      url: certForm.url.trim() || null,
+      description: certForm.description.trim() || null,
+    };
+    const { error } = editingCertificationId
+      ? await db.from("certifications").update(payload).eq("id", editingCertificationId)
+      : await db.from("certifications").insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success(editingCertificationId ? "Certification updated" : "Certification added");
+    setCertForm({ image: "", courseName: "", code: "", url: "", description: "" });
+    setEditingCertificationId(null);
+    void loadAdminData();
+  };
+
+  const editCertification = (row: CertificationRow) => {
+    setEditingCertificationId(row.id);
+    setCertForm({
+      image: row.image_url || row.image || "",
+      courseName: row.course_name || row.name || "",
+      code: row.code || "",
+      url: row.url || "",
+      description: row.description || "",
     });
+    setActivePage("certifications");
   };
 
-  const saveEdit = async () => {
-    if (!editId) return;
-    const { error } = await supabase.from("projects").update({
-      title: editForm.title,
-      description: editForm.description,
-      tech_stack: editForm.tech_stack.split(",").map((s: string) => s.trim()).filter(Boolean),
-      url: editForm.url || null,
-      github_url: editForm.github_url || null,
-      live_url: editForm.live_url || null,
-      image_url: editForm.image_url || null,
-    }).eq("id", editId);
-    if (error) { toast.error(error.message); return; }
-    setEditId(null);
-    fetchProjects();
-    toast.success("Updated");
+  const deleteCertification = async (id: string) => {
+    const { error } = await db.from("certifications").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    void loadAdminData();
+  };
+
+  const toggleCertificationPin = async (row: CertificationRow) => {
+    const next = !row.is_pinned;
+    const { error } = await db.from("certifications").update({ is_pinned: next }).eq("id", row.id);
+    if (error) {
+      if (/is_pinned/i.test(error.message)) {
+        toast.error("Run supabase/apply-pin-columns.sql in Supabase SQL Editor.");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+    toast.success(next ? "Certificate pinned" : "Certificate unpinned");
+    void loadAdminData();
+  };
+
+  const saveProject = async () => {
+    if (!projectForm.projectName.trim() || !projectForm.technology.trim()) {
+      return toast.error("Project name and technology are required");
+    }
+    const payload = {
+      image_url: projectForm.image.trim() || null,
+      project_name: projectForm.projectName.trim(),
+      title: projectForm.projectName.trim(),
+      technology: projectForm.technology.trim(),
+      tech_stack: projectForm.technology.split(",").map((value) => value.trim()).filter(Boolean),
+      live_url: projectForm.live.trim() || null,
+      github_url: projectForm.github.trim() || null,
+      description: projectForm.description.trim() || null,
+      url: projectForm.live.trim() || null,
+    };
+    const { error } = editingProjectId
+      ? await db.from("projects").update(payload).eq("id", editingProjectId)
+      : await db.from("projects").insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success(editingProjectId ? "Project updated" : "Project added");
+    setProjectForm({ image: "", projectName: "", technology: "", github: "", live: "", description: "" });
+    setEditingProjectId(null);
+    void loadAdminData();
+  };
+
+  const editProject = (row: ProjectRow) => {
+    setEditingProjectId(row.id);
+    setProjectForm({
+      image: row.image_url || "",
+      projectName: row.project_name || row.title || "",
+      technology: row.technology || (row.tech_stack || []).join(", "),
+      github: row.github_url || "",
+      live: row.live_url || "",
+      description: row.description || "",
+    });
+    setActivePage("projects");
+  };
+
+  const toggleProjectPin = async (row: ProjectRow) => {
+    const next = !row.is_pinned;
+    const { error } = await db.from("projects").update({ is_pinned: next }).eq("id", row.id);
+    if (error) {
+      if (/is_pinned/i.test(error.message)) {
+        toast.error("Run supabase/apply-pin-columns.sql in Supabase SQL Editor.");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+    toast.success(next ? "Project pinned" : "Project unpinned");
+    void loadAdminData();
   };
 
   const deleteProject = async (id: string) => {
-    await supabase.from("projects").delete().eq("id", id);
-    setProjects(prev => prev.filter(p => p.id !== id));
+    const { error } = await db.from("projects").delete().eq("id", id);
+    if (error) return toast.error(error.message);
     toast.success("Deleted");
+    void loadAdminData();
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+  const resendMessage = (message: ContactMessage) => {
+    const subject = encodeURIComponent(`Re: ${message.name}`);
+    const body = encodeURIComponent(`Hi ${message.name},\n\n${message.message}\n\nBest regards,`);
+    window.open(`mailto:${message.email}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer");
+  };
 
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
-        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Project</h3>
-        <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
-        <Textarea placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
-        <Input placeholder="Tech Stack (comma separated)" value={form.tech_stack} onChange={e => setForm(f => ({ ...f, tech_stack: e.target.value }))} className="text-sm" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <Input placeholder="GitHub URL (optional)" value={form.github_url} onChange={e => setForm(f => ({ ...f, github_url: e.target.value }))} className="text-sm" />
-          <Input placeholder="Live URL (optional)" value={form.live_url} onChange={e => setForm(f => ({ ...f, live_url: e.target.value }))} className="text-sm" />
-          <Input placeholder="Other URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border/40 cursor-pointer text-xs hover:bg-muted/40">
-            <Upload className="w-3.5 h-3.5" /> {uploading ? "Uploading..." : "Upload Image"}
-            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-              const file = e.target.files?.[0]; if (!file) return;
-              const url = await uploadImage(file);
-              if (url) { setForm(f => ({ ...f, image_url: url })); toast.success("Image uploaded"); }
-            }} />
-          </label>
-          {form.image_url && <img src={form.image_url} alt="" className="w-10 h-10 rounded object-cover" />}
-        </div>
-        <Button size="sm" onClick={addProject} className="text-xs">Add</Button>
-      </div>
+  const pageButtonClass = (page: PageKey) =>
+    `w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-all ${activePage === page ? "border-primary/40 bg-primary/10 text-foreground" : "border-transparent bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground"}`;
 
-
-      <div className="space-y-2.5">
-        {projects.map(p => (
-          <div key={p.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
-            {editId === p.id ? (
-              <div className="space-y-2">
-                <Input value={editForm.title} onChange={e => setEditForm((f: any) => ({ ...f, title: e.target.value }))} className="text-sm" />
-                <Textarea value={editForm.description} onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
-                <Input placeholder="Tech Stack" value={editForm.tech_stack} onChange={e => setEditForm((f: any) => ({ ...f, tech_stack: e.target.value }))} className="text-sm" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <Input placeholder="GitHub URL" value={editForm.github_url} onChange={e => setEditForm((f: any) => ({ ...f, github_url: e.target.value }))} className="text-sm" />
-                  <Input placeholder="Live URL" value={editForm.live_url} onChange={e => setEditForm((f: any) => ({ ...f, live_url: e.target.value }))} className="text-sm" />
-                  <Input placeholder="Other URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border/40 cursor-pointer text-xs hover:bg-muted/40">
-                    <Upload className="w-3.5 h-3.5" /> {uploading ? "Uploading..." : "Replace Image"}
-                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                      const file = e.target.files?.[0]; if (!file) return;
-                      const url = await uploadImage(file);
-                      if (url) { setEditForm((f: any) => ({ ...f, image_url: url })); toast.success("Image uploaded"); }
-                    }} />
-                  </label>
-                  {editForm.image_url && <img src={editForm.image_url} alt="" className="w-10 h-10 rounded object-cover" />}
-                </div>
-                <div className="flex gap-1.5">
-                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0 flex gap-3">
-                  {p.image_url && <img src={p.image_url} alt="" className="w-14 h-14 rounded object-cover flex-shrink-0" />}
-                  <div className="min-w-0">
-                  <p className="font-medium text-sm">{p.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
-                  {p.tech_stack?.length > 0 && <p className="text-[10px] text-primary mt-1">{p.tech_stack.join(", ")}</p>}
-                  <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
-                    {p.github_url && <span>GitHub ✓</span>}
-                    {p.live_url && <span>Live ✓</span>}
-                    {p.url && <span>URL ✓</span>}
-                  </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-0.5 flex-shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(p)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteProject(p.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+  const renderContactPage = () => (
+    <AdminFormCard icon={Mail} title="Contact info" subtitle="Shown on the site footer and contact section.">
+      <AdminFieldGrid cols={3}>
+        <AdminField label="Email" required>
+          <Input value={contactInfo.email} onChange={(e) => setContactInfo((c) => ({ ...c, email: e.target.value }))} className={adminInput} />
+        </AdminField>
+        <AdminField label="Phone">
+          <Input value={contactInfo.phone} onChange={(e) => setContactInfo((c) => ({ ...c, phone: e.target.value }))} className={adminInput} />
+        </AdminField>
+        <AdminField label="Address">
+          <Input value={contactInfo.address} onChange={(e) => setContactInfo((c) => ({ ...c, address: e.target.value }))} className={adminInput} />
+        </AdminField>
+      </AdminFieldGrid>
+      <AdminFormActions saveLabel="contact" onSave={saveContact} />
+    </AdminFormCard>
   );
-};
 
-/* ─── Certificates ─── */
-const CertificatesTab = () => {
-  const [certs, setCerts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: "", organization: "", year: "", code: "", url: "", description: "" });
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
-
-  useEffect(() => { fetchCerts(); }, []);
-
-  const fetchCerts = async () => {
-    const { data } = await supabase.from("certificates").select("*").order("sort_order");
-    setCerts(data || []);
-    setLoading(false);
-  };
-
-  const addCert = async () => {
-    if (!form.name.trim() || !form.organization.trim()) { toast.error("Name & Organization required"); return; }
-    const { error } = await supabase.from("certificates").insert({
-      name: form.name,
-      organization: form.organization,
-      year: form.year,
-      code: form.code || null,
-      url: form.url || null,
-      description: form.description || null,
-    });
-    if (error) { toast.error(error.message); return; }
-    setForm({ name: "", organization: "", year: "", code: "", url: "", description: "" });
-    fetchCerts();
-    toast.success("Certificate added");
-  };
-
-  const startEdit = (c: any) => {
-    setEditId(c.id);
-    setEditForm({ name: c.name, organization: c.organization, year: c.year, code: c.code || "", url: c.url || "", description: c.description || "" });
-  };
-
-  const saveEdit = async () => {
-    if (!editId) return;
-    const { error } = await supabase.from("certificates").update({
-      name: editForm.name,
-      organization: editForm.organization,
-      year: editForm.year,
-      code: editForm.code || null,
-      url: editForm.url || null,
-      description: editForm.description || null,
-    }).eq("id", editId);
-    if (error) { toast.error(error.message); return; }
-    setEditId(null);
-    fetchCerts();
-    toast.success("Updated");
-  };
-
-  const deleteCert = async (id: string) => {
-    await supabase.from("certificates").delete().eq("id", id);
-    setCerts(prev => prev.filter(c => c.id !== id));
-    toast.success("Deleted");
-  };
-
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
-
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
-        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Certificate</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <Input placeholder="Certificate Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="text-sm" />
-          <Input placeholder="Organization" value={form.organization} onChange={e => setForm(f => ({ ...f, organization: e.target.value }))} className="text-sm" />
+  const renderSkillsPage = () => (
+    <div className="space-y-6">
+      <AdminFormCard icon={SquareStack} title="Skill category" subtitle="Group skills (e.g. Languages, AI, Web).">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Input
+            value={skillCategoryName}
+            onChange={(e) => setSkillCategoryName(e.target.value)}
+            placeholder="e.g. AI & ML"
+            className={`${adminInput} flex-1`}
+          />
+          <Button onClick={saveSkillCategory} size="sm" className="rounded-full shrink-0">
+            <Plus className="w-4 h-4 mr-1.5" /> Add category
+          </Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <Input placeholder="Year" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} className="text-sm" />
-          <Input placeholder="Code (optional)" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} className="text-sm" />
-          <Input placeholder="URL (optional)" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} className="text-sm" />
-        </div>
-        <Textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
-        <Button size="sm" onClick={addCert} className="text-xs">Add</Button>
-      </div>
+      </AdminFormCard>
 
+      <AdminFormCard icon={Sparkles} title="Skill" subtitle="Pick a category, then add the skill name.">
+        <AdminFieldGrid>
+          <AdminField label="Category" required>
+            <select
+              value={skillItemForm.categoryId}
+              onChange={(e) => setSkillItemForm((s) => ({ ...s, categoryId: e.target.value }))}
+              className={adminSelect}
+            >
+              <option value="">Choose category</option>
+              {skillCategories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+          </AdminField>
+          <AdminField label="Skill name" required>
+            <Input
+              value={skillItemForm.name}
+              onChange={(e) => setSkillItemForm((s) => ({ ...s, name: e.target.value }))}
+              placeholder="e.g. Python, React"
+              className={adminInput}
+            />
+          </AdminField>
+        </AdminFieldGrid>
+        <AdminFormActions
+          saveLabel="skill"
+          editing={!!editingSkillItemId}
+          onSave={saveSkillItem}
+          onCancel={() => { setSkillItemForm({ categoryId: "", name: "" }); setEditingSkillItemId(null); }}
+          disabled={!skillItemForm.categoryId || !skillItemForm.name.trim()}
+        />
+      </AdminFormCard>
 
-      <div className="space-y-2.5">
-        {certs.map(c => (
-          <div key={c.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
-            {editId === c.id ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Input value={editForm.name} onChange={e => setEditForm((f: any) => ({ ...f, name: e.target.value }))} className="text-sm" />
-                  <Input value={editForm.organization} onChange={e => setEditForm((f: any) => ({ ...f, organization: e.target.value }))} className="text-sm" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <Input placeholder="Year" value={editForm.year} onChange={e => setEditForm((f: any) => ({ ...f, year: e.target.value }))} className="text-sm" />
-                  <Input placeholder="Code" value={editForm.code} onChange={e => setEditForm((f: any) => ({ ...f, code: e.target.value }))} className="text-sm" />
-                  <Input placeholder="URL" value={editForm.url} onChange={e => setEditForm((f: any) => ({ ...f, url: e.target.value }))} className="text-sm" />
-                </div>
-                <Textarea placeholder="Description" value={editForm.description} onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))} rows={2} className="text-sm" />
-
-                <div className="flex gap-1.5">
-                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
-                </div>
+      <div className="space-y-3">
+        <AdminListHeader title="Your skills" count={skillCategories.length} />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {skillCategories.map((category) => (
+            <AdminEntryCard key={category.id}>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h3 className="font-mono text-[11px] text-primary tracking-wider uppercase">{category.name}</h3>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => deleteSkillCategory(category.id)}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
               </div>
-            ) : (
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-sm">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">{c.organization} · {c.year}</p>
-                  {c.code && <p className="text-[10px] font-mono text-primary/70 mt-0.5">Code: {c.code}</p>}
-                </div>
-                <div className="flex gap-0.5 flex-shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(c)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteCert(c.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                </div>
+              <div className="flex flex-wrap gap-2 min-h-[2rem]">
+                {skillItems.filter((item) => item.category_id === category.id).length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No skills yet</p>
+                ) : (
+                  skillItems
+                    .filter((item) => item.category_id === category.id)
+                    .map((item) => (
+                      <span
+                        key={item.id}
+                        className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border/40 bg-background/50"
+                      >
+                        {item.name}
+                        <button type="button" onClick={() => editSkillItem(item)} className="text-primary hover:opacity-80">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button type="button" onClick={() => deleteSkillItem(item.id)} className="text-destructive hover:opacity-80">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))
+                )}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/* ─── Content ─── */
-const ContentTab = () => {
-  const [content, setContent] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const keys = ["about_text", "hero_subtitle", "footer_text"];
-
-  useEffect(() => { fetchContent(); }, []);
-
-  const fetchContent = async () => {
-    const { data } = await supabase.from("portfolio_content").select("*");
-    const map: Record<string, string> = {};
-    data?.forEach(d => { map[d.key] = d.value; });
-    setContent(map);
-    setLoading(false);
-  };
-
-  const saveContent = async (key: string) => {
-    const value = content[key] || "";
-    const { error } = await supabase.from("portfolio_content").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Saved");
-  };
-
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
-
-  return (
-    <div className="space-y-4">
-      {keys.map(key => (
-        <div key={key} className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2">
-          <label className="text-xs font-medium capitalize text-muted-foreground">{key.replace(/_/g, " ")}</label>
-          <Textarea value={content[key] || ""} onChange={e => setContent(c => ({ ...c, [key]: e.target.value }))} rows={3} className="text-sm" />
-          <Button size="sm" onClick={() => saveContent(key)} className="text-xs">Save</Button>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-/* ─── Resume ─── */
-const ResumeTab = () => {
-  const [uploading, setUploading] = useState(false);
-  const [files, setFiles] = useState<any[]>([]);
-
-  useEffect(() => { fetchFiles(); }, []);
-
-  const fetchFiles = async () => {
-    const { data } = await supabase.storage.from("resumes").list("", { limit: 20, sortBy: { column: "created_at", order: "desc" } });
-    setFiles(data || []);
-  };
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const fileName = `resume_${Date.now()}_${file.name}`;
-    const { error } = await supabase.storage.from("resumes").upload(fileName, file);
-    if (error) { toast.error(error.message); } else { toast.success("Uploaded!"); fetchFiles(); }
-    setUploading(false);
-  };
-
-  const deleteFile = async (name: string) => {
-    await supabase.storage.from("resumes").remove([name]);
-    fetchFiles();
-    toast.success("Deleted");
-  };
-
-  const getPublicUrl = (name: string) => supabase.storage.from("resumes").getPublicUrl(name).data.publicUrl;
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-border/40 bg-card/40 p-4">
-        <h3 className="text-sm font-medium mb-2.5">Upload Resume</h3>
-        <Input type="file" accept=".pdf,.doc,.docx" onChange={handleUpload} disabled={uploading} className="text-sm" />
-        {uploading && <p className="text-xs text-muted-foreground mt-2">Uploading...</p>}
-      </div>
-      <div className="space-y-2">
-        {files.map(f => (
-          <div key={f.name} className="rounded-lg border border-border/40 bg-card/40 p-3 flex justify-between items-center">
-            <a href={getPublicUrl(f.name)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs truncate">{f.name}</a>
-            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => deleteFile(f.name)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/* ─── Skills ─── */
-const ICON_OPTIONS = ["Code2", "Layers", "Database", "Wrench", "Cloud", "Sparkles", "Cpu", "Brain", "Zap", "Box"];
-
-const SkillsTab = () => {
-  const [skills, setSkills] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ category: "", items: "", icon: "Code2" });
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
-
-  useEffect(() => { fetchSkills(); }, []);
-
-  const fetchSkills = async () => {
-    const { data } = await supabase.from("skills").select("*").order("sort_order");
-    setSkills(data || []);
-    setLoading(false);
-  };
-
-  const addSkill = async () => {
-    if (!form.category.trim()) { toast.error("Category required"); return; }
-    const { error } = await supabase.from("skills").insert({
-      category: form.category,
-      icon: form.icon,
-      items: form.items.split(",").map(s => s.trim()).filter(Boolean),
-      sort_order: skills.length + 1,
-    });
-    if (error) { toast.error(error.message); return; }
-    setForm({ category: "", items: "", icon: "Code2" });
-    fetchSkills();
-    toast.success("Skill category added");
-  };
-
-  const startEdit = (s: any) => {
-    setEditId(s.id);
-    setEditForm({ category: s.category, items: s.items?.join(", ") || "", icon: s.icon || "Code2" });
-  };
-
-  const saveEdit = async () => {
-    if (!editId) return;
-    const { error } = await supabase.from("skills").update({
-      category: editForm.category,
-      icon: editForm.icon,
-      items: editForm.items.split(",").map((s: string) => s.trim()).filter(Boolean),
-    }).eq("id", editId);
-    if (error) { toast.error(error.message); return; }
-    setEditId(null);
-    fetchSkills();
-    toast.success("Updated");
-  };
-
-  const deleteSkill = async (id: string) => {
-    await supabase.from("skills").delete().eq("id", id);
-    setSkills(prev => prev.filter(s => s.id !== id));
-    toast.success("Deleted");
-  };
-
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
-
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
-        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Skill Category</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <Input placeholder="Category (e.g. Languages)" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="text-sm" />
-          <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} className="text-sm rounded-md border border-border/40 bg-background px-3 py-1.5">
-            {ICON_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
-          </select>
-        </div>
-        <Input placeholder="Skills (comma separated, e.g. Python, React, FastAPI)" value={form.items} onChange={e => setForm(f => ({ ...f, items: e.target.value }))} className="text-sm" />
-        <Button size="sm" onClick={addSkill} className="text-xs">Add</Button>
-      </div>
-
-      <div className="space-y-2.5">
-        {skills.map(s => (
-          <div key={s.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
-            {editId === s.id ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Input value={editForm.category} onChange={e => setEditForm((f: any) => ({ ...f, category: e.target.value }))} className="text-sm" />
-                  <select value={editForm.icon} onChange={e => setEditForm((f: any) => ({ ...f, icon: e.target.value }))} className="text-sm rounded-md border border-border/40 bg-background px-3 py-1.5">
-                    {ICON_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
-                  </select>
-                </div>
-                <Input value={editForm.items} onChange={e => setEditForm((f: any) => ({ ...f, items: e.target.value }))} className="text-sm" />
-                <div className="flex gap-1.5">
-                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-sm">{s.category} <span className="text-[10px] text-muted-foreground font-mono ml-1">{s.icon}</span></p>
-                  <p className="text-xs text-muted-foreground mt-1">{s.items?.join(", ")}</p>
-                </div>
-                <div className="flex gap-0.5 flex-shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(s)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteSkill(s.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/* ─── Analytics ─── */
-const AnalyticsTab = () => {
-  const [stats, setStats] = useState<{ views7: number; viewsTotal: number; messages: number; projects: number; posts: number } | null>(null);
-  const [recent, setRecent] = useState<any[]>([]);
-
-  useEffect(() => {
-    (async () => {
-      const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-      const [v7, vAll, msgs, projs, posts, last] = await Promise.all([
-        supabase.from("page_views").select("*", { count: "exact", head: true }).gte("created_at", since),
-        supabase.from("page_views").select("*", { count: "exact", head: true }),
-        supabase.from("contact_messages").select("*", { count: "exact", head: true }),
-        supabase.from("projects").select("*", { count: "exact", head: true }),
-        supabase.from("blog_posts").select("*", { count: "exact", head: true }),
-        supabase.from("page_views").select("path,referrer,created_at").order("created_at", { ascending: false }).limit(8),
-      ]);
-      setStats({
-        views7: v7.count || 0,
-        viewsTotal: vAll.count || 0,
-        messages: msgs.count || 0,
-        projects: projs.count || 0,
-        posts: posts.count || 0,
-      });
-      setRecent(last.data || []);
-    })();
-  }, []);
-
-  if (!stats) return <p className="text-sm text-muted-foreground">Loading...</p>;
-
-  const cards = [
-    { label: "Views (7d)", value: stats.views7 },
-    { label: "Views total", value: stats.viewsTotal },
-    { label: "Messages", value: stats.messages },
-    { label: "Projects", value: stats.projects },
-    { label: "Blog posts", value: stats.posts },
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
-        {cards.map(c => (
-          <div key={c.label} className="rounded-xl border border-border/40 bg-card/40 p-4">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">{c.label}</p>
-            <p className="text-2xl font-semibold mt-1.5">{c.value}</p>
-          </div>
-        ))}
-      </div>
-      <div>
-        <h3 className="text-sm font-medium mb-2.5">Recent Views</h3>
-        <div className="space-y-1.5">
-          {recent.length === 0 ? <p className="text-xs text-muted-foreground">No views yet.</p> : recent.map((r, i) => (
-            <div key={i} className="rounded-md border border-border/40 bg-card/30 p-2.5 text-xs flex justify-between gap-3">
-              <span className="font-mono text-primary/80 truncate">{r.path}</span>
-              <span className="text-muted-foreground truncate flex-1 text-right">{r.referrer || "direct"}</span>
-              <span className="text-muted-foreground/60 text-[10px] flex-shrink-0">{new Date(r.created_at).toLocaleString()}</span>
-            </div>
+            </AdminEntryCard>
           ))}
         </div>
       </div>
     </div>
   );
-};
 
-/* ─── Testimonials ─── */
-const TestimonialsTab = () => {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: "", role: "", company: "", quote: "", avatar_url: "" });
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
+  const renderEducationPage = () => (
+    <div className="space-y-6">
+      <AdminFormCard icon={GraduationCap} title="Education entry" subtitle="Institute and degree are required.">
+        <AdminFieldGrid>
+          <AdminField label="Institute" required>
+            <Input value={educationForm.institute} onChange={(e) => setEducationForm((s) => ({ ...s, institute: e.target.value }))} placeholder="University name" className={adminInput} />
+          </AdminField>
+          <AdminField label="Degree / course" required>
+            <Input value={educationForm.degree} onChange={(e) => setEducationForm((s) => ({ ...s, degree: e.target.value }))} placeholder="BS Computer Science" className={adminInput} />
+          </AdminField>
+        </AdminFieldGrid>
 
-  useEffect(() => { fetch(); }, []);
-  const fetch = async () => {
-    const { data } = await supabase.from("testimonials").select("*").order("sort_order");
-    setItems(data || []); setLoading(false);
-  };
-  const add = async () => {
-    if (!form.name.trim() || !form.quote.trim()) { toast.error("Name & quote required"); return; }
-    const { error } = await supabase.from("testimonials").insert({
-      name: form.name, role: form.role || null, company: form.company || null,
-      quote: form.quote, avatar_url: form.avatar_url || null,
-    });
-    if (error) { toast.error(error.message); return; }
-    setForm({ name: "", role: "", company: "", quote: "", avatar_url: "" });
-    fetch(); toast.success("Added");
-  };
-  const startEdit = (t: any) => { setEditId(t.id); setEditForm({ name: t.name, role: t.role || "", company: t.company || "", quote: t.quote, avatar_url: t.avatar_url || "" }); };
-  const saveEdit = async () => {
-    if (!editId) return;
-    const { error } = await supabase.from("testimonials").update({
-      name: editForm.name, role: editForm.role || null, company: editForm.company || null,
-      quote: editForm.quote, avatar_url: editForm.avatar_url || null,
-    }).eq("id", editId);
-    if (error) { toast.error(error.message); return; }
-    setEditId(null); fetch(); toast.success("Updated");
-  };
-  const del = async (id: string) => { await supabase.from("testimonials").delete().eq("id", id); fetch(); toast.success("Deleted"); };
+        <AdminFormDivider label="Dates" />
+        <AdminFieldGrid>
+          <AdminField label="Start">
+            <Input value={educationForm.startDate} onChange={(e) => setEducationForm((s) => ({ ...s, startDate: e.target.value }))} placeholder="2022" className={adminInput} />
+          </AdminField>
+          <AdminField label="End">
+            <Input value={educationForm.endDate} onChange={(e) => setEducationForm((s) => ({ ...s, endDate: e.target.value }))} placeholder="2026" className={adminInput} />
+          </AdminField>
+        </AdminFieldGrid>
+        <AdminField label="Display label">
+          <Input value={educationForm.year} onChange={(e) => setEducationForm((s) => ({ ...s, year: e.target.value }))} placeholder="2022 – 2026" className={`${adminInput} max-w-md`} />
+        </AdminField>
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+        <AdminFormDivider label="Photo" />
+        <AdminImageField value={educationForm.image} onChange={(url) => setEducationForm((s) => ({ ...s, image: url }))} onUpload={uploadImage} />
 
-  return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
-        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Testimonial</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="text-sm" />
-          <Input placeholder="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className="text-sm" />
-          <Input placeholder="Company" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} className="text-sm" />
-        </div>
-        <Textarea placeholder="Quote" value={form.quote} onChange={e => setForm(f => ({ ...f, quote: e.target.value }))} rows={3} className="text-sm" />
-        <Input placeholder="Avatar URL (optional)" value={form.avatar_url} onChange={e => setForm(f => ({ ...f, avatar_url: e.target.value }))} className="text-sm" />
-        <Button size="sm" onClick={add} className="text-xs">Add</Button>
-      </div>
+        <AdminFormActions
+          saveLabel="education"
+          editing={!!editingEducationId}
+          onSave={saveEducation}
+          onCancel={() => { setEducationForm({ institute: "", degree: "", startDate: "", endDate: "", year: "", image: "" }); setEditingEducationId(null); }}
+          disabled={!educationForm.institute.trim() || !educationForm.degree.trim()}
+        />
+      </AdminFormCard>
 
-      <div className="space-y-2.5">
-        {items.map(t => (
-          <div key={t.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
-            {editId === t.id ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <Input value={editForm.name} onChange={e => setEditForm((f: any) => ({ ...f, name: e.target.value }))} className="text-sm" />
-                  <Input value={editForm.role} onChange={e => setEditForm((f: any) => ({ ...f, role: e.target.value }))} className="text-sm" />
-                  <Input value={editForm.company} onChange={e => setEditForm((f: any) => ({ ...f, company: e.target.value }))} className="text-sm" />
-                </div>
-                <Textarea value={editForm.quote} onChange={e => setEditForm((f: any) => ({ ...f, quote: e.target.value }))} rows={3} className="text-sm" />
-                <Input value={editForm.avatar_url} onChange={e => setEditForm((f: any) => ({ ...f, avatar_url: e.target.value }))} className="text-sm" />
-                <div className="flex gap-1.5">
-                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
-                </div>
+      <div className="space-y-3">
+        <AdminListHeader title="Saved entries" count={education.length} />
+        {education.map((row) => (
+          <AdminEntryCard key={row.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex gap-3 min-w-0">
+              {row.image_url ? <img src={row.image_url} alt="" className="h-14 w-14 rounded-lg object-cover border border-border/30 shrink-0" /> : null}
+              <div>
+                <p className="font-medium text-sm">{row.degree}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{row.institute}</p>
+                {(row.year || row.start_date || row.end_date) ? (
+                  <p className="text-[11px] text-primary/90 mt-1.5 font-mono">{row.year || [row.start_date, row.end_date].filter(Boolean).join(" – ")}</p>
+                ) : null}
               </div>
-            ) : (
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-sm">{t.name} <span className="text-muted-foreground font-normal text-xs">· {t.role}{t.company && ` @ ${t.company}`}</span></p>
-                  <p className="text-xs text-muted-foreground mt-1 italic">"{t.quote}"</p>
-                </div>
-                <div className="flex gap-0.5 flex-shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(t)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => del(t.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editEducation(row)}><Pencil className="w-4 h-4 text-primary" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteEducation(row.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+            </div>
+          </AdminEntryCard>
         ))}
       </div>
     </div>
   );
-};
 
-/* ─── Blog ─── */
-const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const renderCertificationsPage = () => (
+    <div className="space-y-6">
+      <AdminFormCard icon={Award} title="Certification" subtitle="Course name is required.">
+        <AdminFieldGrid>
+          <AdminField label="Course name" required>
+            <Input value={certForm.courseName} onChange={(e) => setCertForm((s) => ({ ...s, courseName: e.target.value }))} placeholder="AWS Solutions Architect" className={adminInput} />
+          </AdminField>
+          <AdminField label="Credential ID">
+            <Input value={certForm.code} onChange={(e) => setCertForm((s) => ({ ...s, code: e.target.value }))} placeholder="ABC-123" className={adminInput} />
+          </AdminField>
+          <AdminField label="Verify link" className="md:col-span-2">
+            <Input type="url" value={certForm.url} onChange={(e) => setCertForm((s) => ({ ...s, url: e.target.value }))} placeholder="https://..." className={adminInput} />
+          </AdminField>
+        </AdminFieldGrid>
 
-const BlogTab = () => {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: "", slug: "", excerpt: "", content: "", cover_url: "", tags: "", published: false });
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
+        <AdminFormDivider label="Details" />
+        <AdminField label="Description">
+          <Textarea value={certForm.description} onChange={(e) => setCertForm((s) => ({ ...s, description: e.target.value }))} placeholder="Short summary" rows={3} className={`${adminInput} min-h-[88px]`} />
+        </AdminField>
 
-  useEffect(() => { fetch(); }, []);
-  const fetch = async () => {
-    const { data } = await supabase.from("blog_posts").select("*").order("created_at", { ascending: false });
-    setPosts(data || []); setLoading(false);
-  };
-  const add = async () => {
-    if (!form.title.trim()) { toast.error("Title required"); return; }
-    const slug = form.slug.trim() || slugify(form.title);
-    const { error } = await supabase.from("blog_posts").insert({
-      title: form.title, slug, excerpt: form.excerpt || null, content: form.content || null,
-      cover_url: form.cover_url || null,
-      tags: form.tags.split(",").map(s => s.trim()).filter(Boolean),
-      published: form.published,
-    });
-    if (error) { toast.error(error.message); return; }
-    setForm({ title: "", slug: "", excerpt: "", content: "", cover_url: "", tags: "", published: false });
-    fetch(); toast.success("Post added");
-  };
-  const startEdit = (p: any) => {
-    setEditId(p.id);
-    setEditForm({ title: p.title, slug: p.slug, excerpt: p.excerpt || "", content: p.content || "", cover_url: p.cover_url || "", tags: (p.tags || []).join(", "), published: !!p.published });
-  };
-  const saveEdit = async () => {
-    if (!editId) return;
-    const { error } = await supabase.from("blog_posts").update({
-      title: editForm.title, slug: editForm.slug || slugify(editForm.title),
-      excerpt: editForm.excerpt || null, content: editForm.content || null,
-      cover_url: editForm.cover_url || null,
-      tags: editForm.tags.split(",").map((s: string) => s.trim()).filter(Boolean),
-      published: editForm.published,
-    }).eq("id", editId);
-    if (error) { toast.error(error.message); return; }
-    setEditId(null); fetch(); toast.success("Updated");
-  };
-  const del = async (id: string) => { await supabase.from("blog_posts").delete().eq("id", id); fetch(); toast.success("Deleted"); };
+        <AdminFormDivider label="Certificate image" />
+        <AdminImageField value={certForm.image} onChange={(url) => setCertForm((s) => ({ ...s, image: url }))} onUpload={uploadImage} fullImagePreview />
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+        <AdminFormActions
+          saveLabel="certification"
+          editing={!!editingCertificationId}
+          onSave={saveCertification}
+          onCancel={() => { setCertForm({ image: "", courseName: "", code: "", url: "", description: "" }); setEditingCertificationId(null); }}
+          disabled={!certForm.courseName.trim()}
+        />
+      </AdminFormCard>
+
+      <div className="space-y-3">
+        <AdminListHeader title="Saved certifications" count={certifications.length} />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {certifications.map((cert) => (
+            <AdminEntryCard key={cert.id} className={`flex flex-col gap-3 ${cert.is_pinned ? "border-primary/40 ring-1 ring-primary/15" : ""}`}>
+              {cert.is_pinned ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-primary uppercase tracking-wider">
+                  <Pin className="w-3 h-3" /> Pinned
+                </span>
+              ) : null}
+              {(cert.image_url || cert.image) ? (
+                <img src={cert.image_url || cert.image || ""} alt={cert.course_name || cert.name || "Certificate"} className="w-full max-h-48 rounded-lg object-contain bg-muted/15 border border-border/25" />
+              ) : null}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm leading-snug">{cert.course_name || cert.name}</p>
+                {cert.code ? <p className="text-xs text-muted-foreground mt-1 font-mono">ID: {cert.code}</p> : null}
+                {cert.description ? <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{cert.description}</p> : null}
+              </div>
+              <div className="flex items-center gap-1 pt-1 border-t border-border/25">
+                <Button variant="ghost" size="icon" className="h-8 w-8" title={cert.is_pinned ? "Unpin" : "Pin to top"} onClick={() => toggleCertificationPin(cert)}>
+                  {cert.is_pinned ? <PinOff className="w-4 h-4 text-primary" /> : <Pin className="w-4 h-4 text-muted-foreground" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editCertification(cert)}><Pencil className="w-4 h-4 text-primary" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteCertification(cert.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              </div>
+            </AdminEntryCard>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderProjectsPage = () => (
+    <div className="space-y-6">
+      <AdminFormCard icon={FolderOpen} title="Project" subtitle="Name and technology are required.">
+        <AdminFieldGrid>
+          <AdminField label="Project name" required>
+            <Input value={projectForm.projectName} onChange={(e) => setProjectForm((s) => ({ ...s, projectName: e.target.value }))} placeholder="InferenceLogic CMS" className={adminInput} />
+          </AdminField>
+          <AdminField label="Technology" required>
+            <Input value={projectForm.technology} onChange={(e) => setProjectForm((s) => ({ ...s, technology: e.target.value }))} placeholder="React, Supabase, Tailwind" className={adminInput} />
+          </AdminField>
+        </AdminFieldGrid>
+
+        <AdminFormDivider label="Links" />
+        <AdminFieldGrid>
+          <AdminField label="GitHub">
+            <Input type="url" value={projectForm.github} onChange={(e) => setProjectForm((s) => ({ ...s, github: e.target.value }))} placeholder="https://github.com/..." className={adminInput} />
+          </AdminField>
+          <AdminField label="Live demo">
+            <Input type="url" value={projectForm.live} onChange={(e) => setProjectForm((s) => ({ ...s, live: e.target.value }))} placeholder="https://..." className={adminInput} />
+          </AdminField>
+        </AdminFieldGrid>
+
+        <AdminFormDivider label="Overview" />
+        <AdminField label="Description">
+          <Textarea value={projectForm.description} onChange={(e) => setProjectForm((s) => ({ ...s, description: e.target.value }))} placeholder="What the project does" rows={3} className={`${adminInput} min-h-[88px]`} />
+        </AdminField>
+
+        <AdminFormDivider label="Screenshot" />
+        <AdminImageField value={projectForm.image} onChange={(url) => setProjectForm((s) => ({ ...s, image: url }))} onUpload={uploadImage} fullImagePreview />
+
+        <AdminFormActions
+          saveLabel="project"
+          editing={!!editingProjectId}
+          onSave={saveProject}
+          onCancel={() => { setProjectForm({ image: "", projectName: "", technology: "", github: "", live: "", description: "" }); setEditingProjectId(null); }}
+          disabled={!projectForm.projectName.trim() || !projectForm.technology.trim()}
+        />
+      </AdminFormCard>
+
+      <div className="space-y-3">
+        <AdminListHeader title="Saved projects" count={projects.length} />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {projects.map((project) => (
+            <AdminEntryCard key={project.id} className={`flex flex-col gap-3 ${project.is_pinned ? "border-primary/40 ring-1 ring-primary/15" : ""}`}>
+              {project.is_pinned ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-primary uppercase tracking-wider">
+                  <Pin className="w-3 h-3" /> Pinned
+                </span>
+              ) : null}
+              {project.image_url ? (
+                <img src={project.image_url} alt={project.project_name || project.title || "Project"} className="w-full max-h-48 rounded-lg object-contain bg-muted/15 border border-border/25" />
+              ) : null}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{project.project_name || project.title}</p>
+                <p className="text-xs text-primary/80 mt-1">{project.technology || (project.tech_stack || []).join(", ")}</p>
+                {project.description ? <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{project.description}</p> : null}
+                <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                  {project.github_url ? <a className="text-primary hover:underline" href={project.github_url} target="_blank" rel="noreferrer">GitHub</a> : null}
+                  {project.live_url ? <a className="text-primary hover:underline" href={project.live_url} target="_blank" rel="noreferrer">Live</a> : null}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 pt-1 border-t border-border/25">
+                <Button variant="ghost" size="icon" className="h-8 w-8" title={project.is_pinned ? "Unpin" : "Pin to top"} onClick={() => toggleProjectPin(project)}>
+                  {project.is_pinned ? <PinOff className="w-4 h-4 text-primary" /> : <Pin className="w-4 h-4 text-muted-foreground" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editProject(project)}><Pencil className="w-4 h-4 text-primary" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteProject(project.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              </div>
+            </AdminEntryCard>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-background text-foreground text-sm">Loading...</div>;
+  }
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border/40 bg-card/40 p-4 space-y-2.5">
-        <h3 className="text-sm font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add Blog Post</h3>
-        <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="text-sm" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <Input placeholder="Slug (auto if empty)" value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} className="text-sm" />
-          <Input placeholder="Cover Image URL (optional)" value={form.cover_url} onChange={e => setForm(f => ({ ...f, cover_url: e.target.value }))} className="text-sm" />
-        </div>
-        <Textarea placeholder="Excerpt" value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} rows={2} className="text-sm" />
-        <Textarea placeholder="Content (markdown)" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} rows={5} className="text-sm" />
-        <Input placeholder="Tags (comma separated)" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} className="text-sm" />
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <input type="checkbox" checked={form.published} onChange={e => setForm(f => ({ ...f, published: e.target.checked }))} /> Published
-        </label>
-        <Button size="sm" onClick={add} className="text-xs">Add</Button>
-      </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <main className="container mx-auto max-w-6xl px-4 py-6 md:py-8">
+        <div className="rounded-2xl border border-border/50 bg-card/30 overflow-hidden">
+          <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border-b border-border/50 px-4 py-4 md:px-6 bg-muted/10">
+            <div>
+              <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary mb-2">
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to site
+              </Link>
+              <h1 className="text-xl md:text-2xl font-semibold">Content manager</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Edit portfolio sections</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="w-fit shrink-0">
+              <LogOut className="w-4 h-4 mr-2" /> Logout
+            </Button>
+          </header>
 
-      <div className="space-y-2.5">
-        {posts.map(p => (
-          <div key={p.id} className="rounded-lg border border-border/40 bg-card/40 p-3.5">
-            {editId === p.id ? (
-              <div className="space-y-2">
-                <Input value={editForm.title} onChange={e => setEditForm((f: any) => ({ ...f, title: e.target.value }))} className="text-sm" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Input value={editForm.slug} onChange={e => setEditForm((f: any) => ({ ...f, slug: e.target.value }))} className="text-sm" />
-                  <Input value={editForm.cover_url} onChange={e => setEditForm((f: any) => ({ ...f, cover_url: e.target.value }))} className="text-sm" />
+          <div className="grid gap-0 lg:grid-cols-[240px_1fr]">
+            <aside className="border-b lg:border-b-0 lg:border-r border-border/50 bg-muted/5 p-3 md:p-4 lg:sticky lg:top-0 lg:h-[calc(100vh-5rem)] lg:overflow-auto">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 px-1">Sections</p>
+              <div className="space-y-1">
+                {pages.map((page) => {
+                  const Icon = page.icon;
+                  return (
+                    <button key={page.id} onClick={() => setActivePage(page.id)} className={pageButtonClass(page.id)}>
+                      <Icon className={`w-4 h-4 ${activePage === page.id ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className="font-medium text-sm">{page.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 rounded-lg border border-border/50 bg-card/40 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquareText className="w-3.5 h-3.5 text-primary" />
+                  <h2 className="font-medium text-xs">Inbox</h2>
                 </div>
-                <Textarea value={editForm.excerpt} onChange={e => setEditForm((f: any) => ({ ...f, excerpt: e.target.value }))} rows={2} className="text-sm" />
-                <Textarea value={editForm.content} onChange={e => setEditForm((f: any) => ({ ...f, content: e.target.value }))} rows={5} className="text-sm" />
-                <Input value={editForm.tags} onChange={e => setEditForm((f: any) => ({ ...f, tags: e.target.value }))} className="text-sm" />
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={editForm.published} onChange={e => setEditForm((f: any) => ({ ...f, published: e.target.checked }))} /> Published
-                </label>
-                <div className="flex gap-1.5">
-                  <Button size="sm" onClick={saveEdit} className="text-xs"><Check className="w-3 h-3 mr-1" /> Save</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditId(null)} className="text-xs"><X className="w-3 h-3 mr-1" /> Cancel</Button>
+                <div className="space-y-3">
+                  {messages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No contact messages yet.</p>
+                  ) : messages.map((message) => (
+                    <div key={message.id} className="rounded-xl border border-border/40 bg-background/40 p-3">
+                      <p className="text-xs font-medium text-foreground truncate">{message.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{message.email}</p>
+                      <p className="text-[11px] text-muted-foreground mt-2 line-clamp-3">{message.message}</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Button size="sm" variant="outline" className="h-7 text-[11px] border-border/40" onClick={() => resendMessage(message)}>Resend</Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={async () => { const { error } = await db.from("contact_messages").delete().eq("id", message.id); if (error) return toast.error(error.message); setMessages((prev) => prev.filter((item) => item.id !== message.id)); toast.success("Removed"); }}>
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-sm">{p.title} {p.published ? <span className="text-[10px] text-primary ml-1">● live</span> : <span className="text-[10px] text-muted-foreground ml-1">draft</span>}</p>
-                  <p className="text-[10px] font-mono text-muted-foreground">/{p.slug}</p>
-                  {p.excerpt && <p className="text-xs text-muted-foreground mt-1">{p.excerpt}</p>}
-                </div>
-                <div className="flex gap-0.5 flex-shrink-0">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(p)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => del(p.id)}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
-                </div>
-              </div>
-            )}
+            </aside>
+
+            <section className="p-4 md:p-6 bg-background/50 min-h-[420px]">
+              {activePage === "contact" && renderContactPage()}
+              {activePage === "skills" && renderSkillsPage()}
+              {activePage === "education" && renderEducationPage()}
+              {activePage === "certifications" && renderCertificationsPage()}
+              {activePage === "projects" && renderProjectsPage()}
+            </section>
           </div>
-        ))}
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

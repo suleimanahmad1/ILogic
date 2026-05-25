@@ -4,8 +4,6 @@ import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
 import SkillsSection from "@/components/SkillsSection";
 import ProjectsSection from "@/components/ProjectsSection";
-import BlogSection from "@/components/BlogSection";
-import TestimonialsSection from "@/components/TestimonialsSection";
 import EducationSection from "@/components/EducationSection";
 import FooterSection from "@/components/FooterSection";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,8 +27,6 @@ const Index = () => {
       <AboutSection />
       <SkillsSection />
       <ProjectsSection />
-      <BlogSection />
-      <TestimonialsSection />
       <EducationSection />
       <FooterSection />
     </div>

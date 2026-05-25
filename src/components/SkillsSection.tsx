@@ -1,27 +1,20 @@
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Code2, Layers, Database, Wrench, Cloud, Sparkles, Cpu, Brain, Zap, Box } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-
-const ICON_MAP: Record<string, any> = { Code2, Layers, Database, Wrench, Cloud, Sparkles, Cpu, Brain, Zap, Box };
-
-const fallback = [
-  { id: "1", category: "Languages", icon: "Code2", items: ["Python", "JavaScript", "React", "Solidity", "C++"] },
-  { id: "2", category: "Frameworks", icon: "Layers", items: ["FastAPI", "Streamlit", "TensorFlow", "Pandas", "LangChain", "CrewAI"] },
-  { id: "3", category: "Vector DBs", icon: "Database", items: ["Qdrant", "Pinecone", "FAISS", "Supabase"] },
-  { id: "4", category: "Dev Tools", icon: "Wrench", items: ["VS Code", "Google AI Studio", "WindSurf", "Lovable", "Hugging Face", "Google Colab"] },
-  { id: "5", category: "Cloud", icon: "Cloud", items: ["Microsoft Azure", "AWS"] },
-];
+import { Code2 } from "lucide-react";
+import { useSkillsCatalog } from "@/hooks/useSiteData";
 
 const SkillsSection = () => {
-  const [skills, setSkills] = useState<any[]>(fallback);
+  const { categories, items } = useSkillsCatalog();
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("skills").select("*").order("sort_order");
-      if (data && data.length > 0) setSkills(data);
-    })();
-  }, []);
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const dbItemsByCategory = new Map<string, string[]>();
+
+  items.forEach((item) => {
+    const category = categories.find((entry) => entry.id === item.category_id);
+    if (!category) return;
+    const key = normalize(category.name);
+    const current = dbItemsByCategory.get(key) || [];
+    dbItemsByCategory.set(key, [...current, item.name]);
+  });
 
   return (
     <section id="skills" className="section-padding bg-muted/10 relative overflow-hidden">
@@ -32,34 +25,36 @@ const SkillsSection = () => {
           <h2 className="section-heading">
             Tools I <span className="text-gradient">build</span> with.
           </h2>
-          <p className="section-sub">A curated set of languages, frameworks, and platforms I reach for daily.</p>
+          <p className="section-sub">All skills are now driven from the database, so anything added in Admin appears here automatically.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {skills.map((group, gi) => {
-              const Icon = ICON_MAP[group.icon] || Code2;
+            {categories.length ? categories.map((category, index) => {
+              const dbMatches = dbItemsByCategory.get(normalize(category.name)) || [];
               return (
                 <motion.div
-                  key={group.id}
+                  key={category.id}
                   initial={{ y: 20, opacity: 0 }}
                   whileInView={{ y: 0, opacity: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: gi * 0.08, duration: 0.4 }}
+                  transition={{ delay: index * 0.08, duration: 0.4 }}
                   className="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-5 hover:border-primary/30 transition-all duration-300"
                 >
                   <div className="flex items-center gap-2.5 mb-4">
-                    <Icon className="w-4 h-4 text-primary" />
-                    <h3 className="font-mono text-xs text-primary tracking-wider uppercase">{group.category}</h3>
+                    <Code2 className="w-4 h-4 text-primary" />
+                    <h3 className="font-mono text-xs text-primary tracking-wider uppercase">{category.name}</h3>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {group.items?.map((skill: string) => (
+                    {dbMatches.length ? dbMatches.map((skill) => (
                       <span key={skill} className="text-[11px] px-2.5 py-1 rounded-full border border-border/50 text-secondary-foreground/80 hover:border-primary/40 hover:text-primary transition-all duration-300 cursor-default">
                         {skill}
                       </span>
-                    ))}
+                    )) : <span className="text-[11px] text-muted-foreground">No skills added yet</span>}
                   </div>
                 </motion.div>
               );
-            })}
+            }) : (
+              <p className="text-sm text-muted-foreground">No skill categories found yet.</p>
+            )}
           </div>
         </motion.div>
       </div>
