@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { ArrowRight, ChevronDown, Sparkles } from "lucide-react";
 import profileImg from "@/assets/profile.jpg";
 import { usePortfolioContent } from "@/hooks/useSiteData";
@@ -75,7 +76,7 @@ const HeroSection = () => {
                 </a>
               </Button>
               <Button asChild variant="outline" size="sm" className="rounded-full px-5 border-border/50 bg-card/40">
-                <a href="/about-dashboard">Get in touch</a>
+                <Link to="/about-dashboard">Get in touch</Link>
               </Button>
             </div>
           </motion.div>
