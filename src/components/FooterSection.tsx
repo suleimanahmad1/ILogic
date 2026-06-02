@@ -28,8 +28,8 @@ const FooterSection = () => {
           <p className="text-sm mt-1">{contact.phone}</p>
           <p className="text-sm mt-1">{contact.address}</p>
           <div className="flex items-center gap-3 mt-3">
-            <a href="https://github.com/" aria-label="GitHub" className="text-muted-foreground hover:text-foreground"><Github className="w-4 h-4" /></a>
-            <a href="https://www.linkedin.com/in/suleimanahmad/" aria-label="LinkedIn" className="text-muted-foreground hover:text-foreground"><Linkedin className="w-4 h-4" /></a>
+            <a href="https://github.com/" target="_blank" rel="noopener noreferrer" aria-label="GitHub" className="text-muted-foreground hover:text-foreground"><Github className="w-4 h-4" /></a>
+            <a href="https://www.linkedin.com/in/suleimanahmad/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-foreground"><Linkedin className="w-4 h-4" /></a>
           </div>
         </div>
       </div>
