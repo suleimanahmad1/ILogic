@@ -12,6 +12,7 @@ const links = [
   { label: "Projects", href: "#projects", id: "projects" },
   { label: "About", href: "#about", id: "about" },
   { label: "Education", href: "#education", id: "education" },
+  { label: "Blogs", href: "/blogs-dashboard", id: "blogs", route: true },
 ];
 
 const Navbar = () => {
@@ -60,9 +61,13 @@ const Navbar = () => {
         <BrandLogo href="/" showName />
 
         <div className="hidden md:flex items-center gap-4">
-          {links.map((l) => (
-            l.id === 'about' ? (
-              <Link key={l.href} to="/about-dashboard" className={`text-sm font-mono transition-colors relative ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>
+          {links.map((l) =>
+            l.id === "about" || (l as { route?: boolean }).route ? (
+              <Link
+                key={l.href}
+                to={l.href}
+                className={`text-sm font-mono transition-colors relative ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+              >
                 {l.label}
                 {active === l.id && <span className="absolute -bottom-1.5 left-0 right-0 h-px bg-primary" />}
               </Link>
@@ -80,7 +85,7 @@ const Navbar = () => {
                 )}
               </a>
             )
-          ))}
+          )}
 
           <button
             onClick={user ? openAdmin : openLogin}
@@ -120,13 +125,27 @@ const Navbar = () => {
 
       {menuOpen && (
         <div className="md:hidden glass mt-2 mx-6 rounded-lg p-4 flex flex-col gap-4">
-          {links.map((l) => (
-            l.id === 'about' ? (
-              <Link key={l.href} to="/about-dashboard" onClick={() => setMenuOpen(false)} className={`text-sm font-mono transition-colors ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>{l.label}</Link>
+          {links.map((l) =>
+            l.id === "about" || (l as { route?: boolean }).route ? (
+              <Link
+                key={l.href}
+                to={l.href}
+                onClick={() => setMenuOpen(false)}
+                className={`text-sm font-mono transition-colors ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+              >
+                {l.label}
+              </Link>
             ) : (
-              <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className={`text-sm font-mono transition-colors ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}>{l.label}</a>
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                className={`text-sm font-mono transition-colors ${active === l.id ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+              >
+                {l.label}
+              </a>
             )
-          ))}
+          )}
           <button
             onClick={() => {
               setMenuOpen(false);

@@ -66,6 +66,19 @@ export type Project = {
   created_at?: string | null;
 };
 
+export type BlogPost = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  content: string | null;
+  cover_url: string | null;
+  tags: string[] | null;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PortfolioContent = Record<string, string>;
 
 export const defaultContactInfo: ContactInfo = {
@@ -225,6 +238,30 @@ export const useProjects = () => {
   }, []);
 
   return projects;
+};
+
+export const useBlogPosts = () => {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    db
+      .from("blog_posts")
+      .select("*")
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .then(({ data }: any) => {
+        if (!mounted) return;
+        setPosts((data || []) as BlogPost[]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return posts;
 };
 
 export const usePortfolioContent = () => {

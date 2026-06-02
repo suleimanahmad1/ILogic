@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { isAdminUser } from "@/lib/adminAuth";
 import { signOutIfNotAllowed, UNAUTHORIZED_LOGIN_MESSAGE } from "@/lib/allowedAdmin";
 import AdminImageField from "@/components/admin/AdminImageField";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 import { adminInput, adminSelect } from "@/components/admin/adminUi";
 import {
   AdminFormCard,
@@ -19,7 +20,9 @@ import {
   AdminEntryCard,
 } from "@/components/admin/AdminFormLayout";
 import { sortByPinned } from "@/lib/sortByPinned";
-import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, Inbox, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff } from "lucide-react";
+import { slugify } from "@/lib/slugify";
+import { richTextToPlain } from "@/lib/richText";
+import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, Inbox, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff, BookOpen } from "lucide-react";
 import AdminInboxPage from "@/components/admin/AdminInboxPage";
 import type { ContactMessage } from "@/lib/contactInbox";
 import { getUnreadCount, removeMessageFromRead, subscribeInboxRead } from "@/lib/inboxRead";
@@ -29,10 +32,11 @@ const STORAGE_BUCKET = "website-images";
 type EducationRow = { id: string; institute: string; degree: string; start_date: string | null; end_date: string | null; year: string | null; image_url: string | null; sort_order: number | null };
 type SkillCategoryRow = { id: string; name: string; sort_order: number | null };
 type SkillItemRow = { id: string; category_id: string; name: string; sort_order: number | null };
-type CertificationRow = { id: string; image_url: string | null; image?: string | null; course_name?: string | null; name?: string | null; code: string | null; url: string | null; description: string | null; is_pinned?: boolean | null; created_at?: string | null };
-type ProjectRow = { id: string; project_name?: string | null; title?: string | null; technology?: string | null; tech_stack?: string[] | null; image_url: string | null; github_url: string | null; live_url: string | null; description: string | null; url: string | null; is_pinned?: boolean | null; created_at?: string | null };
+type CertificationRow = { id: string; image_url: string | null; image?: string | null; course_name?: string | null; name?: string | null; code: string | null; url: string | null; description: string | null; is_pinned?: boolean | null; sort_order?: number | null; created_at?: string | null };
+type ProjectRow = { id: string; project_name?: string | null; title?: string | null; technology?: string | null; tech_stack?: string[] | null; image_url: string | null; github_url: string | null; live_url: string | null; description: string | null; url: string | null; is_pinned?: boolean | null; sort_order?: number | null; created_at?: string | null };
+type BlogPostRow = { id: string; title: string; slug: string; excerpt: string | null; content: string | null; cover_url: string | null; tags: string[] | null; published: boolean; created_at: string };
 
-type PageKey = "contact" | "inbox" | "skills" | "education" | "certifications" | "projects";
+type PageKey = "contact" | "inbox" | "skills" | "education" | "certifications" | "projects" | "blogs";
 
 type PageConfig = { id: PageKey; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -62,6 +66,18 @@ const Admin = () => {
   const [projectForm, setProjectForm] = useState({ image: "", projectName: "", technology: "", github: "", live: "", description: "" });
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
+  const [blogPosts, setBlogPosts] = useState<BlogPostRow[]>([]);
+  const [blogForm, setBlogForm] = useState({
+    title: "",
+    slug: "",
+    excerpt: "",
+    content: "",
+    cover: "",
+    tags: "",
+    published: true,
+  });
+  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -72,6 +88,7 @@ const Admin = () => {
     { id: "education", label: "Education", icon: GraduationCap },
     { id: "certifications", label: "Certifications", icon: Award },
     { id: "projects", label: "Projects", icon: FolderOpen },
+    { id: "blogs", label: "Blogs", icon: BookOpen },
   ]), []);
 
   useEffect(() => {
@@ -106,13 +123,14 @@ const Admin = () => {
   };
 
   const loadAdminData = async () => {
-    const [contactRes, educationRes, categoriesRes, itemsRes, certRes, projectsRes, messagesRes] = await Promise.all([
+    const [contactRes, educationRes, categoriesRes, itemsRes, certRes, projectsRes, blogsRes, messagesRes] = await Promise.all([
       db.from("contact_info").select("*").limit(1).maybeSingle(),
       db.from("education").select("*").order("sort_order", { ascending: true }),
       db.from("skills_categories").select("*").order("sort_order", { ascending: true }),
       db.from("skills_items").select("*").order("sort_order", { ascending: true }),
       db.from("certifications").select("*").order("created_at", { ascending: true }),
       db.from("projects").select("*").order("created_at", { ascending: true }),
+      db.from("blog_posts").select("*").order("created_at", { ascending: false }),
       db.from("contact_messages").select("*").order("created_at", { ascending: false }),
     ]);
 
@@ -125,6 +143,7 @@ const Admin = () => {
     setSkillItems((itemsRes.data || []) as SkillItemRow[]);
     setCertifications(sortByPinned((certRes.data || []) as CertificationRow[]));
     setProjects(sortByPinned((projectsRes.data || []) as ProjectRow[]));
+    setBlogPosts((blogsRes.data || []) as BlogPostRow[]);
     if (messagesRes.error) {
       const msg = messagesRes.error.message;
       if (/contact_messages/i.test(msg) && /schema cache|does not exist|not find/i.test(msg)) {
@@ -290,7 +309,16 @@ const Admin = () => {
 
   const toggleCertificationPin = async (row: CertificationRow) => {
     const next = !row.is_pinned;
-    const { error } = await db.from("certifications").update({ is_pinned: next }).eq("id", row.id);
+    let nextSortOrder: number | null = null;
+    if (next) {
+      const pinned = certifications.filter((item) => item.is_pinned && item.id !== row.id);
+      const maxOrder = pinned.reduce((max, item) => {
+        const value = typeof item.sort_order === "number" ? item.sort_order : 0;
+        return Math.max(max, value);
+      }, 0);
+      nextSortOrder = maxOrder + 1;
+    }
+    const { error } = await db.from("certifications").update({ is_pinned: next, sort_order: nextSortOrder }).eq("id", row.id);
     if (error) {
       if (/is_pinned/i.test(error.message)) {
         toast.error("Run supabase/apply-pin-columns.sql in Supabase SQL Editor.");
@@ -300,6 +328,19 @@ const Admin = () => {
       return;
     }
     toast.success(next ? "Certificate pinned" : "Certificate unpinned");
+    void loadAdminData();
+  };
+
+  const updateCertificationPinOrder = async (row: CertificationRow, rawValue: string) => {
+    if (!row.is_pinned) return;
+    const parsed = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      toast.error("Pin number must be 1 or greater");
+      return;
+    }
+    const { error } = await db.from("certifications").update({ sort_order: parsed }).eq("id", row.id);
+    if (error) return toast.error(error.message);
+    toast.success("Pin number updated");
     void loadAdminData();
   };
 
@@ -343,7 +384,16 @@ const Admin = () => {
 
   const toggleProjectPin = async (row: ProjectRow) => {
     const next = !row.is_pinned;
-    const { error } = await db.from("projects").update({ is_pinned: next }).eq("id", row.id);
+    let nextSortOrder: number | null = null;
+    if (next) {
+      const pinned = projects.filter((item) => item.is_pinned && item.id !== row.id);
+      const maxOrder = pinned.reduce((max, item) => {
+        const value = typeof item.sort_order === "number" ? item.sort_order : 0;
+        return Math.max(max, value);
+      }, 0);
+      nextSortOrder = maxOrder + 1;
+    }
+    const { error } = await db.from("projects").update({ is_pinned: next, sort_order: nextSortOrder }).eq("id", row.id);
     if (error) {
       if (/is_pinned/i.test(error.message)) {
         toast.error("Run supabase/apply-pin-columns.sql in Supabase SQL Editor.");
@@ -356,8 +406,72 @@ const Admin = () => {
     void loadAdminData();
   };
 
+  const updateProjectPinOrder = async (row: ProjectRow, rawValue: string) => {
+    if (!row.is_pinned) return;
+    const parsed = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      toast.error("Pin number must be 1 or greater");
+      return;
+    }
+    const { error } = await db.from("projects").update({ sort_order: parsed }).eq("id", row.id);
+    if (error) return toast.error(error.message);
+    toast.success("Pin number updated");
+    void loadAdminData();
+  };
+
   const deleteProject = async (id: string) => {
     const { error } = await db.from("projects").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    void loadAdminData();
+  };
+
+  const saveBlogPost = async () => {
+    if (!blogForm.title.trim()) return toast.error("Title is required");
+    const slug = (blogForm.slug.trim() || slugify(blogForm.title)).slice(0, 120);
+    const tags = blogForm.tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const payload = {
+      title: blogForm.title.trim(),
+      slug,
+      excerpt: blogForm.excerpt.trim() || null,
+      content: blogForm.content.trim() || null,
+      cover_url: blogForm.cover.trim() || null,
+      tags,
+      published: blogForm.published,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = editingBlogId
+      ? await db.from("blog_posts").update(payload).eq("id", editingBlogId)
+      : await db.from("blog_posts").insert(payload);
+    if (error) {
+      if (/slug/i.test(error.message)) return toast.error("Slug already exists — use a different slug.");
+      return toast.error(error.message);
+    }
+    toast.success(editingBlogId ? "Blog updated" : "Blog published");
+    setBlogForm({ title: "", slug: "", excerpt: "", content: "", cover: "", tags: "", published: true });
+    setEditingBlogId(null);
+    void loadAdminData();
+  };
+
+  const editBlogPost = (row: BlogPostRow) => {
+    setEditingBlogId(row.id);
+    setBlogForm({
+      title: row.title,
+      slug: row.slug,
+      excerpt: row.excerpt || "",
+      content: row.content || "",
+      cover: row.cover_url || "",
+      tags: (row.tags || []).join(", "),
+      published: row.published,
+    });
+    setActivePage("blogs");
+  };
+
+  const deleteBlogPost = async (id: string) => {
+    const { error } = await db.from("blog_posts").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     void loadAdminData();
@@ -571,7 +685,12 @@ const Admin = () => {
 
         <AdminFormDivider label="Details" />
         <AdminField label="Description">
-          <Textarea value={certForm.description} onChange={(e) => setCertForm((s) => ({ ...s, description: e.target.value }))} placeholder="Short summary" rows={3} className={`${adminInput} min-h-[88px]`} />
+          <RichTextEditor
+            value={certForm.description}
+            onChange={(next) => setCertForm((s) => ({ ...s, description: next }))}
+            placeholder="Short summary"
+            rows={4}
+          />
         </AdminField>
 
         <AdminFormDivider label="Certificate image" />
@@ -602,7 +721,20 @@ const Admin = () => {
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm leading-snug">{cert.course_name || cert.name}</p>
                 {cert.code ? <p className="text-xs text-muted-foreground mt-1 font-mono">ID: {cert.code}</p> : null}
-                {cert.description ? <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{cert.description}</p> : null}
+                {cert.description ? <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{richTextToPlain(cert.description)}</p> : null}
+                {cert.is_pinned ? (
+                  <div className="mt-2">
+                    <label className="text-[11px] text-muted-foreground">Pin number</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      defaultValue={cert.sort_order ?? 1}
+                      onBlur={(e) => void updateCertificationPinOrder(cert, e.target.value)}
+                      className={`${adminInput} mt-1 h-8 text-xs`}
+                    />
+                  </div>
+                ) : null}
               </div>
               <div className="flex items-center gap-1 pt-1 border-t border-border/25">
                 <Button variant="ghost" size="icon" className="h-8 w-8" title={cert.is_pinned ? "Unpin" : "Pin to top"} onClick={() => toggleCertificationPin(cert)}>
@@ -610,6 +742,113 @@ const Admin = () => {
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editCertification(cert)}><Pencil className="w-4 h-4 text-primary" /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteCertification(cert.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+              </div>
+            </AdminEntryCard>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBlogsPage = () => (
+    <div className="space-y-6">
+      <AdminFormCard icon={BookOpen} title="Blog post" subtitle="Published posts appear on the site under Education → Blogs.">
+        <AdminFieldGrid>
+          <AdminField label="Title" required>
+            <Input
+              value={blogForm.title}
+              onChange={(e) => setBlogForm((s) => ({ ...s, title: e.target.value, slug: s.slug || slugify(e.target.value) }))}
+              placeholder="Building RAG pipelines"
+              className={adminInput}
+            />
+          </AdminField>
+          <AdminField label="Slug">
+            <Input
+              value={blogForm.slug}
+              onChange={(e) => setBlogForm((s) => ({ ...s, slug: slugify(e.target.value) }))}
+              placeholder="building-rag-pipelines"
+              className={adminInput}
+            />
+          </AdminField>
+        </AdminFieldGrid>
+
+        <AdminField label="Excerpt">
+          <RichTextEditor
+            value={blogForm.excerpt}
+            onChange={(next) => setBlogForm((s) => ({ ...s, excerpt: next }))}
+            placeholder="Short summary for cards"
+            rows={3}
+          />
+        </AdminField>
+
+        <AdminFormDivider label="Content" />
+        <AdminField label="Body">
+          <RichTextEditor
+            value={blogForm.content}
+            onChange={(next) => setBlogForm((s) => ({ ...s, content: next }))}
+            placeholder="Full article text"
+            rows={10}
+          />
+        </AdminField>
+
+        <AdminFieldGrid>
+          <AdminField label="Tags (comma-separated)">
+            <Input
+              value={blogForm.tags}
+              onChange={(e) => setBlogForm((s) => ({ ...s, tags: e.target.value }))}
+              placeholder="AI, RAG, React"
+              className={adminInput}
+            />
+          </AdminField>
+          <AdminField label="Published">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+              <input
+                type="checkbox"
+                checked={blogForm.published}
+                onChange={(e) => setBlogForm((s) => ({ ...s, published: e.target.checked }))}
+                className="rounded border-border"
+              />
+              Show on website
+            </label>
+          </AdminField>
+        </AdminFieldGrid>
+
+        <AdminFormDivider label="Cover image" />
+        <AdminImageField value={blogForm.cover} onChange={(url) => setBlogForm((s) => ({ ...s, cover: url }))} onUpload={uploadImage} fullImagePreview />
+
+        <AdminFormActions
+          saveLabel="blog"
+          editing={!!editingBlogId}
+          onSave={saveBlogPost}
+          onCancel={() => {
+            setBlogForm({ title: "", slug: "", excerpt: "", content: "", cover: "", tags: "", published: true });
+            setEditingBlogId(null);
+          }}
+          disabled={!blogForm.title.trim()}
+        />
+      </AdminFormCard>
+
+      <div className="space-y-3">
+        <AdminListHeader title="Saved blogs" count={blogPosts.length} />
+        <div className="grid gap-4 md:grid-cols-2">
+          {blogPosts.map((post) => (
+            <AdminEntryCard key={post.id} className="flex flex-col gap-3">
+              {post.cover_url ? (
+                <img src={post.cover_url} alt="" className="w-full max-h-40 rounded-lg object-cover border border-border/25" />
+              ) : null}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{post.title}</p>
+                <p className="text-[11px] text-muted-foreground font-mono mt-1">/{post.slug}</p>
+                {post.excerpt ? <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{richTextToPlain(post.excerpt)}</p> : null}
+                <p className="text-[10px] mt-2 font-mono text-primary/80">{post.published ? "Published" : "Draft"}</p>
+              </div>
+              <div className="flex items-center gap-1 pt-1 border-t border-border/25">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editBlogPost(post)}>
+                  <Pencil className="w-4 h-4 text-primary" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteBlogPost(post.id)}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
               </div>
             </AdminEntryCard>
           ))}
@@ -642,7 +881,12 @@ const Admin = () => {
 
         <AdminFormDivider label="Overview" />
         <AdminField label="Description">
-          <Textarea value={projectForm.description} onChange={(e) => setProjectForm((s) => ({ ...s, description: e.target.value }))} placeholder="What the project does" rows={3} className={`${adminInput} min-h-[88px]`} />
+          <RichTextEditor
+            value={projectForm.description}
+            onChange={(next) => setProjectForm((s) => ({ ...s, description: next }))}
+            placeholder="What the project does"
+            rows={4}
+          />
         </AdminField>
 
         <AdminFormDivider label="Screenshot" />
@@ -673,7 +917,20 @@ const Admin = () => {
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{project.project_name || project.title}</p>
                 <p className="text-xs text-primary/80 mt-1">{project.technology || (project.tech_stack || []).join(", ")}</p>
-                {project.description ? <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{project.description}</p> : null}
+                {project.description ? <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{richTextToPlain(project.description)}</p> : null}
+                {project.is_pinned ? (
+                  <div className="mt-2">
+                    <label className="text-[11px] text-muted-foreground">Pin number</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      defaultValue={project.sort_order ?? 1}
+                      onBlur={(e) => void updateProjectPinOrder(project, e.target.value)}
+                      className={`${adminInput} mt-1 h-8 text-xs`}
+                    />
+                  </div>
+                ) : null}
                 <div className="mt-2 flex flex-wrap gap-3 text-xs">
                   {project.github_url ? <a className="text-primary hover:underline" href={project.github_url} target="_blank" rel="noreferrer">GitHub</a> : null}
                   {project.live_url ? <a className="text-primary hover:underline" href={project.live_url} target="_blank" rel="noreferrer">Live</a> : null}
@@ -743,6 +1000,7 @@ const Admin = () => {
               {activePage === "education" && renderEducationPage()}
               {activePage === "certifications" && renderCertificationsPage()}
               {activePage === "projects" && renderProjectsPage()}
+              {activePage === "blogs" && renderBlogsPage()}
             </section>
           </div>
         </div>

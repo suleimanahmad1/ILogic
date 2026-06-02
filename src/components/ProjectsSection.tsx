@@ -6,6 +6,7 @@ import { sortByPinned } from "@/lib/sortByPinned";
 import { LIST_INITIAL, LIST_LOAD_STEP } from "@/lib/loadMore";
 import { Button } from "@/components/ui/button";
 import PortfolioDetailDialog, { type DetailLink } from "@/components/PortfolioDetailDialog";
+import { richTextToPlain } from "@/lib/richText";
 
 type ProjectRow = {
   id: string;
@@ -134,7 +135,7 @@ const ProjectsSection = () => {
 
                   <h3 className="font-semibold text-foreground mb-2 text-base group-hover:text-primary transition-colors">{project.title}</h3>
                   {project.technology ? <p className="text-[11px] text-primary/80 mb-2">Technology: {project.technology}</p> : null}
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{project.description || "Tap to view details."}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{richTextToPlain(project.description) || "Tap to view details."}</p>
                   <p className="text-[10px] text-primary/60 mt-2 font-mono">Click to read more</p>
                 </div>
               </motion.div>

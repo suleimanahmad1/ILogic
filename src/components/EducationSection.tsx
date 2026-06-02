@@ -6,6 +6,8 @@ import { sortByPinned } from "@/lib/sortByPinned";
 import { LIST_INITIAL, LIST_LOAD_STEP } from "@/lib/loadMore";
 import { Button } from "@/components/ui/button";
 import PortfolioDetailDialog, { type DetailLink } from "@/components/PortfolioDetailDialog";
+import BlogsSection from "@/components/BlogsSection";
+import { richTextToPlain } from "@/lib/richText";
 
 type CertItem = {
   id: string;
@@ -150,7 +152,7 @@ const EducationSection = () => {
                         ) : null}
                         {cert.code ? <p className="text-[11px] text-muted-foreground mt-2 line-clamp-1">Code: {cert.code}</p> : null}
                         {cert.description ? (
-                          <p className="text-[11px] text-muted-foreground/80 mt-1 leading-relaxed line-clamp-2">{cert.description}</p>
+                          <p className="text-[11px] text-muted-foreground/80 mt-1 leading-relaxed line-clamp-2">{richTextToPlain(cert.description)}</p>
                         ) : (
                           <p className="text-[10px] text-primary/60 mt-2 font-mono">Click to read more</p>
                         )}
@@ -186,6 +188,8 @@ const EducationSection = () => {
               </div>
             </div>
           </div>
+
+          <BlogsSection />
         </motion.div>
       </div>
 

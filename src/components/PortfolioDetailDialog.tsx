@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { sanitizeRichText } from "@/lib/richText";
 
 export type DetailLink = {
   label: string;
@@ -98,9 +99,14 @@ const PortfolioDetailDialog = ({
 
         <div className="rounded-xl border border-border/25 bg-card/30 px-4 py-4">
           <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-primary/70 mb-2">Overview</p>
-          <p className="text-sm md:text-[0.95rem] text-muted-foreground leading-relaxed whitespace-pre-wrap">
-            {description?.trim() || "No description added yet."}
-          </p>
+          {description?.trim() ? (
+            <div
+              className="text-sm md:text-[0.95rem] text-muted-foreground leading-relaxed prose prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: sanitizeRichText(description) }}
+            />
+          ) : (
+            <p className="text-sm md:text-[0.95rem] text-muted-foreground leading-relaxed">No description added yet.</p>
+          )}
         </div>
 
         {links.length > 0 ? (

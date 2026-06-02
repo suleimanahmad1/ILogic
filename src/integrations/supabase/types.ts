@@ -120,23 +120,29 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          form_started_at: string | null
           id: string
           message: string
           name: string
+          submit_nonce: string | null
         }
         Insert: {
           created_at?: string
           email: string
+          form_started_at?: string | null
           id?: string
           message: string
           name: string
+          submit_nonce?: string | null
         }
         Update: {
           created_at?: string
           email?: string
+          form_started_at?: string | null
           id?: string
           message?: string
           name?: string
+          submit_nonce?: string | null
         }
         Relationships: []
       }

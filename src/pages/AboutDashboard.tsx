@@ -11,9 +11,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 const INQUIRY_TYPES = ["General inquiry", "AI & ML project", "Full-stack / MERN", "Automation & integrations"];
+const MIN_SUBMIT_MS = 5_000;
+const MAX_SUBMIT_MS = 10 * 60 * 1_000;
+
+const createSubmitNonce = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+};
 
 const AboutDashboard = () => {
   const [form, setForm] = useState({ name: "", phone: "", email: "", service: INQUIRY_TYPES[0], description: "" });
+  const [formStartedAt, setFormStartedAt] = useState(() => Date.now());
+  const [submitNonce, setSubmitNonce] = useState(() => createSubmitNonce());
   const contact = useContactInfo();
   const contentFromDb = usePortfolioContent();
   const aboutHtml = contentFromDb.about_text?.trim();
@@ -36,11 +47,25 @@ const AboutDashboard = () => {
       return;
     }
 
+    const elapsedMs = Date.now() - formStartedAt;
+    if (elapsedMs < MIN_SUBMIT_MS || elapsedMs > MAX_SUBMIT_MS) {
+      toast.error("Please try again.");
+      return;
+    }
+
     const message = `phone:${form.phone} | service:${form.service} | description:${form.description}`;
     try {
-      const { error } = await supabase.from("contact_messages").insert({ name: form.name, email: form.email, message });
+      const { error } = await supabase.from("contact_messages").insert({
+        name: form.name,
+        email: form.email,
+        message,
+        form_started_at: new Date(formStartedAt).toISOString(),
+        submit_nonce: submitNonce,
+      });
       if (error) throw error;
       setForm({ name: "", phone: "", email: "", service: INQUIRY_TYPES[0], description: "" });
+      setFormStartedAt(Date.now());
+      setSubmitNonce(createSubmitNonce());
       setErrors({});
       toast.success("Message sent — thank you! We'll be in touch soon.");
     } catch (err: unknown) {
@@ -215,6 +240,8 @@ const AboutDashboard = () => {
                       variant="outline"
                       onClick={() => {
                         setForm({ name: "", phone: "", email: "", service: INQUIRY_TYPES[0], description: "" });
+                        setFormStartedAt(Date.now());
+                        setSubmitNonce(createSubmitNonce());
                         setErrors({});
                       }}
                     >
