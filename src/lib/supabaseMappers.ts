@@ -1,4 +1,5 @@
 import type { Tables } from "@/integrations/supabase/types";
+import { parseBlogAuthorName } from "@/lib/blogAuthor";
 import type { BlogPost, Certification, Project } from "@/types/site";
 
 export const mapCertificationRow = (row: Tables<"certifications">): Certification => ({
@@ -31,6 +32,9 @@ export const mapBlogPostRow = (row: Tables<"blog_posts">): BlogPost => ({
   excerpt: row.excerpt,
   content: row.content,
   cover_url: row.cover_url,
+  author_name: parseBlogAuthorName(row),
+  is_pinned: row.is_pinned,
+  sort_order: row.sort_order,
   tags: row.tags,
   published: row.published,
   created_at: row.created_at,

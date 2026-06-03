@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { sanitizeRichText } from "@/lib/richText";
+import { usePageSeo } from "@/hooks/usePageSeo";
 
 const INQUIRY_TYPES = ["General inquiry", "AI & ML project", "Full-stack / MERN", "Automation & integrations"];
 const MIN_SUBMIT_MS = 5_000;
@@ -23,6 +24,13 @@ const createSubmitNonce = () => {
 };
 
 const AboutDashboard = () => {
+  usePageSeo({
+    title: "About & Contact",
+    description:
+      "Contact Suleiman Ahmad at InferenceLogic for AI, ML, MERN, and n8n automation projects. Get in touch for consulting and engineering work.",
+    path: "/about-dashboard",
+  });
+
   const [form, setForm] = useState({ name: "", phone: "", email: "", service: INQUIRY_TYPES[0], description: "" });
   const [formStartedAt, setFormStartedAt] = useState(() => Date.now());
   const [submitNonce, setSubmitNonce] = useState(() => createSubmitNonce());

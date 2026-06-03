@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import { blogPostSelect } from "@/lib/blogAuthor";
 import { mapBlogPostRow, mapCertificationRow, mapProjectRow } from "@/lib/supabaseMappers";
 import { sortByPinned } from "@/lib/sortByPinned";
 import type { BlogPost, Certification, Project } from "@/types/site";
@@ -183,14 +184,28 @@ export const useBlogPosts = () => {
   useEffect(() => {
     let mounted = true;
 
+    const applyPosts = (data: Parameters<typeof mapBlogPostRow>[0][] | null) => {
+      if (!mounted) return;
+      setPosts(sortByPinned((data || []).map(mapBlogPostRow)));
+    };
+
     supabase
       .from("blog_posts")
-      .select("*")
+      .select(blogPostSelect)
       .eq("published", true)
       .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (!mounted) return;
-        setPosts((data || []).map(mapBlogPostRow));
+      .then(async ({ data, error }) => {
+        if (!error) {
+          applyPosts(data);
+          return;
+        }
+        if (!/author_name|is_pinned|sort_order|column/i.test(error.message)) return;
+        const fallback = await supabase
+          .from("blog_posts")
+          .select("*")
+          .eq("published", true)
+          .order("created_at", { ascending: false });
+        if (!fallback.error) applyPosts(fallback.data);
       });
 
     return () => {

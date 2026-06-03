@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Calendar, ArrowUpRight } from "lucide-react";
+import { Calendar, ArrowUpRight, User, Pin } from "lucide-react";
 import type { BlogPost } from "@/hooks/useSiteData";
 import { richTextToPlain } from "@/lib/richText";
 
@@ -21,8 +21,15 @@ const BlogCard = ({ post, index = 0 }: BlogCardProps) => (
   >
     <Link
       to={`/blogs/${post.slug}`}
-      className="group flex h-full flex-col rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm transition-all duration-300 hover:border-primary/35 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+      className={`group flex h-full flex-col rounded-2xl border p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+        post.is_pinned ? "border-primary/40 bg-card/50 hover:border-primary/50" : "border-border/40 bg-card/40 hover:border-primary/35"
+      }`}
     >
+      {post.is_pinned ? (
+        <span className="mb-3 inline-flex items-center gap-1 text-[10px] font-mono text-primary tracking-wider">
+          <Pin className="w-3 h-3" /> Pinned
+        </span>
+      ) : null}
       {post.cover_url ? (
         <div className="mb-4 overflow-hidden rounded-xl border border-border/30 bg-muted/15">
           <img
@@ -42,6 +49,12 @@ const BlogCard = ({ post, index = 0 }: BlogCardProps) => (
       <h3 className="mt-2 font-semibold text-foreground text-base leading-snug group-hover:text-primary transition-colors">
         {post.title}
       </h3>
+      {post.author_name ? (
+        <p className="mt-1.5 text-sm text-foreground/90 flex items-center gap-1.5">
+          <User className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>{post.author_name}</span>
+        </p>
+      ) : null}
       {post.excerpt ? (
         <p className="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-3 flex-1">{richTextToPlain(post.excerpt)}</p>
       ) : (

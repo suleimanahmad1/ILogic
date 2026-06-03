@@ -7,11 +7,26 @@ CREATE TABLE IF NOT EXISTS public.blog_posts (
   excerpt TEXT,
   content TEXT,
   cover_url TEXT,
+  author_name TEXT,
+  is_pinned BOOLEAN NOT NULL DEFAULT false,
+  sort_order INT DEFAULT 0,
   tags TEXT[] DEFAULT '{}',
   published BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.blog_posts
+  ADD COLUMN IF NOT EXISTS author_name TEXT;
+
+ALTER TABLE public.blog_posts
+  ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE public.blog_posts
+  ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS blog_posts_is_pinned_created_at_idx
+  ON public.blog_posts (is_pinned DESC, created_at ASC);
 
 ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
 

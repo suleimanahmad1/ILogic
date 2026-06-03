@@ -22,10 +22,12 @@ import {
 import { sortByPinned } from "@/lib/sortByPinned";
 import { slugify } from "@/lib/slugify";
 import { richTextToPlain } from "@/lib/richText";
+import { getImageUploadError } from "@/lib/imageUploadLimits";
 import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, Inbox, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff, BookOpen } from "lucide-react";
 import AdminInboxPage from "@/components/admin/AdminInboxPage";
 import type { ContactMessage } from "@/lib/contactInbox";
 import { getUnreadCount, removeMessageFromRead, subscribeInboxRead } from "@/lib/inboxRead";
+import { usePageSeo } from "@/hooks/usePageSeo";
 
 const STORAGE_BUCKET = "website-images";
 type EducationRow = { id: string; institute: string; degree: string; start_date: string | null; end_date: string | null; year: string | null; image_url: string | null; sort_order: number | null };
@@ -33,13 +35,15 @@ type SkillCategoryRow = { id: string; name: string; sort_order: number | null };
 type SkillItemRow = { id: string; category_id: string; name: string; sort_order: number | null };
 type CertificationRow = { id: string; image_url: string | null; image?: string | null; course_name?: string | null; name?: string | null; code: string | null; url: string | null; description: string | null; is_pinned?: boolean | null; sort_order?: number | null; created_at?: string | null };
 type ProjectRow = { id: string; project_name?: string | null; title?: string | null; technology?: string | null; tech_stack?: string[] | null; image_url: string | null; github_url: string | null; live_url: string | null; description: string | null; url: string | null; is_pinned?: boolean | null; sort_order?: number | null; created_at?: string | null };
-type BlogPostRow = { id: string; title: string; slug: string; excerpt: string | null; content: string | null; cover_url: string | null; tags: string[] | null; published: boolean; created_at: string };
+type BlogPostRow = { id: string; title: string; slug: string; excerpt: string | null; content: string | null; cover_url: string | null; author_name: string | null; is_pinned?: boolean | null; sort_order?: number | null; tags: string[] | null; published: boolean; created_at: string };
 
 type PageKey = "contact" | "inbox" | "skills" | "education" | "certifications" | "projects" | "blogs";
 
 type PageConfig = { id: PageKey; label: string; icon: React.ComponentType<{ className?: string }> };
 
 const Admin = () => {
+  usePageSeo({ title: "Admin", description: "Private admin panel.", noindex: true });
+
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [activePage, setActivePage] = useState<PageKey>("contact");
@@ -69,6 +73,7 @@ const Admin = () => {
   const [blogForm, setBlogForm] = useState({
     title: "",
     slug: "",
+    authorName: "",
     excerpt: "",
     content: "",
     cover: "",
@@ -147,7 +152,7 @@ const Admin = () => {
     setSkillItems((itemsRes.data || []) as SkillItemRow[]);
     setCertifications(sortByPinned((certRes.data || []) as CertificationRow[]));
     setProjects(sortByPinned((projectsRes.data || []) as ProjectRow[]));
-    setBlogPosts((blogsRes.data || []) as BlogPostRow[]);
+    setBlogPosts(sortByPinned((blogsRes.data || []) as BlogPostRow[]));
     if (messagesRes.error) {
       const msg = messagesRes.error.message;
       if (/contact_messages/i.test(msg) && /schema cache|does not exist|not find/i.test(msg)) {
@@ -165,6 +170,11 @@ const Admin = () => {
   };
 
   const uploadImage = async (file: File) => {
+    const sizeError = getImageUploadError(file);
+    if (sizeError) {
+      toast.error(sizeError);
+      return null;
+    }
     const ext = file.name.split(".").pop() || "png";
     const path = `admin-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: true });
@@ -432,6 +442,7 @@ const Admin = () => {
 
   const saveBlogPost = async () => {
     if (!blogForm.title.trim()) return toast.error("Title is required");
+    if (!blogForm.authorName.trim()) return toast.error("Author name is required");
     const slug = (blogForm.slug.trim() || slugify(blogForm.title)).slice(0, 120);
     const tags = blogForm.tags
       .split(",")
@@ -440,6 +451,7 @@ const Admin = () => {
     const payload = {
       title: blogForm.title.trim(),
       slug,
+      author_name: blogForm.authorName.trim(),
       excerpt: blogForm.excerpt.trim() || null,
       content: blogForm.content.trim() || null,
       cover_url: blogForm.cover.trim() || null,
@@ -447,15 +459,24 @@ const Admin = () => {
       published: blogForm.published,
       updated_at: new Date().toISOString(),
     };
-    const { error } = editingBlogId
-      ? await supabase.from("blog_posts").update(payload).eq("id", editingBlogId)
-      : await supabase.from("blog_posts").insert(payload);
+    const query = editingBlogId
+      ? supabase.from("blog_posts").update(payload).eq("id", editingBlogId)
+      : supabase.from("blog_posts").insert(payload);
+    const { data: saved, error } = await query.select("id, author_name").maybeSingle();
     if (error) {
+      if (/author_name|schema cache/i.test(error.message)) {
+        return toast.error(
+          "Author column missing in database. Supabase → SQL Editor → run supabase/apply-blog-posts.sql, then save again."
+        );
+      }
       if (/slug/i.test(error.message)) return toast.error("Slug already exists — use a different slug.");
       return toast.error(error.message);
     }
+    if (!saved?.author_name?.trim()) {
+      return toast.error("Author name was not saved. Run apply-blog-posts.sql in Supabase, then try again.");
+    }
     toast.success(editingBlogId ? "Blog updated" : "Blog published");
-    setBlogForm({ title: "", slug: "", excerpt: "", content: "", cover: "", tags: "", published: true });
+    setBlogForm({ title: "", slug: "", authorName: "", excerpt: "", content: "", cover: "", tags: "", published: true });
     setEditingBlogId(null);
     void loadAdminData();
   };
@@ -465,6 +486,7 @@ const Admin = () => {
     setBlogForm({
       title: row.title,
       slug: row.slug,
+      authorName: row.author_name || "",
       excerpt: row.excerpt || "",
       content: row.content || "",
       cover: row.cover_url || "",
@@ -478,6 +500,43 @@ const Admin = () => {
     const { error } = await supabase.from("blog_posts").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
+    void loadAdminData();
+  };
+
+  const toggleBlogPin = async (row: BlogPostRow) => {
+    const next = !row.is_pinned;
+    let nextSortOrder: number | null = null;
+    if (next) {
+      const pinned = blogPosts.filter((item) => item.is_pinned && item.id !== row.id);
+      const maxOrder = pinned.reduce((max, item) => {
+        const value = typeof item.sort_order === "number" ? item.sort_order : 0;
+        return Math.max(max, value);
+      }, 0);
+      nextSortOrder = maxOrder + 1;
+    }
+    const { error } = await supabase.from("blog_posts").update({ is_pinned: next, sort_order: nextSortOrder }).eq("id", row.id);
+    if (error) {
+      if (/is_pinned|sort_order/i.test(error.message)) {
+        toast.error("Run supabase/apply-blog-posts.sql in Supabase SQL Editor.");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
+    toast.success(next ? "Blog pinned" : "Blog unpinned");
+    void loadAdminData();
+  };
+
+  const updateBlogPinOrder = async (row: BlogPostRow, rawValue: string) => {
+    if (!row.is_pinned) return;
+    const parsed = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      toast.error("Pin number must be 1 or greater");
+      return;
+    }
+    const { error } = await supabase.from("blog_posts").update({ sort_order: parsed }).eq("id", row.id);
+    if (error) return toast.error(error.message);
+    toast.success("Pin number updated");
     void loadAdminData();
   };
 
@@ -776,6 +835,15 @@ const Admin = () => {
           </AdminField>
         </AdminFieldGrid>
 
+        <AdminField label="Author name" required>
+          <Input
+            value={blogForm.authorName}
+            onChange={(e) => setBlogForm((s) => ({ ...s, authorName: e.target.value }))}
+            placeholder="Suleiman Ahmed"
+            className={adminInput}
+          />
+        </AdminField>
+
         <AdminField label="Excerpt">
           <RichTextEditor
             value={blogForm.excerpt}
@@ -792,6 +860,7 @@ const Admin = () => {
             onChange={(next) => setBlogForm((s) => ({ ...s, content: next }))}
             placeholder="Full article text"
             rows={10}
+            onUploadImage={uploadImage}
           />
         </AdminField>
 
@@ -825,10 +894,10 @@ const Admin = () => {
           editing={!!editingBlogId}
           onSave={saveBlogPost}
           onCancel={() => {
-            setBlogForm({ title: "", slug: "", excerpt: "", content: "", cover: "", tags: "", published: true });
+            setBlogForm({ title: "", slug: "", authorName: "", excerpt: "", content: "", cover: "", tags: "", published: true });
             setEditingBlogId(null);
           }}
-          disabled={!blogForm.title.trim()}
+          disabled={!blogForm.title.trim() || !blogForm.authorName.trim()}
         />
       </AdminFormCard>
 
@@ -836,17 +905,42 @@ const Admin = () => {
         <AdminListHeader title="Saved blogs" count={blogPosts.length} />
         <div className="grid gap-4 md:grid-cols-2">
           {blogPosts.map((post) => (
-            <AdminEntryCard key={post.id} className="flex flex-col gap-3">
+            <AdminEntryCard key={post.id} className={`flex flex-col gap-3 ${post.is_pinned ? "border-primary/40 ring-1 ring-primary/15" : ""}`}>
+              {post.is_pinned ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-primary tracking-wider">
+                  <Pin className="w-3 h-3" /> Pinned
+                </span>
+              ) : null}
               {post.cover_url ? (
                 <img src={post.cover_url} alt="" className="w-full max-h-40 rounded-lg object-cover border border-border/25" />
               ) : null}
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{post.title}</p>
+                {post.author_name ? (
+                  <p className="text-[11px] text-muted-foreground mt-1">By {post.author_name}</p>
+                ) : null}
                 <p className="text-[11px] text-muted-foreground font-mono mt-1">/{post.slug}</p>
                 {post.excerpt ? <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{richTextToPlain(post.excerpt)}</p> : null}
                 <p className="text-[10px] mt-2 font-mono text-primary/80">{post.published ? "Published" : "Draft"}</p>
               </div>
-              <div className="flex items-center gap-1 pt-1 border-t border-border/25">
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/25">
+                {post.is_pinned ? (
+                  <div className="flex items-center gap-2 mr-auto">
+                    <label className="text-[11px] text-muted-foreground">Pin number</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      className={`${adminInput} h-8 w-16 text-xs`}
+                      defaultValue={post.sort_order ?? 1}
+                      onBlur={(e) => void updateBlogPinOrder(post, e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <span className="mr-auto" />
+                )}
+                <Button variant="ghost" size="icon" className="h-8 w-8" title={post.is_pinned ? "Unpin" : "Pin to top"} onClick={() => toggleBlogPin(post)}>
+                  {post.is_pinned ? <PinOff className="w-4 h-4 text-primary" /> : <Pin className="w-4 h-4 text-muted-foreground" />}
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editBlogPost(post)}>
                   <Pencil className="w-4 h-4 text-primary" />
                 </Button>

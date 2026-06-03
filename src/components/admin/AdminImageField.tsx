@@ -1,6 +1,8 @@
 import { Upload } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { adminInput } from "@/components/admin/adminUi";
+import { getImageUploadError, MAX_IMAGE_SIZE_LABEL } from "@/lib/imageUploadLimits";
 
 type Props = {
   value: string;
@@ -35,6 +37,12 @@ const AdminImageField = ({
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
+            const sizeError = getImageUploadError(file);
+            if (sizeError) {
+              toast.error(sizeError);
+              e.target.value = "";
+              return;
+            }
             try {
               const url = await onUpload(file);
               if (url) onChange(url);
@@ -57,7 +65,9 @@ const AdminImageField = ({
         />
       </div>
     ) : (
-      <p className="text-[10px] text-center text-muted-foreground">No image yet</p>
+      <p className="text-[10px] text-center text-muted-foreground">
+        No image yet · max {MAX_IMAGE_SIZE_LABEL}
+      </p>
     )}
   </div>
 );

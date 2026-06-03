@@ -43,6 +43,7 @@ export const sanitizeRichText = (input: string | null | undefined): string => {
     "H6",
     "S",
     "DEL",
+    "IMG",
   ]);
 
   const sanitizeNode = (node: Node) => {
@@ -63,6 +64,8 @@ export const sanitizeRichText = (input: string | null | undefined): string => {
       }
       if (el.tagName === "A") {
         if (key !== "href" && key !== "target" && key !== "rel") el.removeAttribute(attr.name);
+      } else if (el.tagName === "IMG") {
+        if (key !== "src" && key !== "alt" && key !== "title" && key !== "class") el.removeAttribute(attr.name);
       } else if (key !== "style") {
         el.removeAttribute(attr.name);
       }
@@ -76,6 +79,16 @@ export const sanitizeRichText = (input: string | null | undefined): string => {
         el.setAttribute("target", "_blank");
         el.setAttribute("rel", "noopener noreferrer");
       }
+    }
+
+    if (el.tagName === "IMG") {
+      const src = (el.getAttribute("src") || "").trim();
+      if (!/^https?:\/\//i.test(src)) {
+        el.remove();
+        return;
+      }
+      el.setAttribute("loading", "lazy");
+      el.setAttribute("decoding", "async");
     }
 
     if (el.hasAttribute("style")) {

@@ -1,8 +1,16 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { usePageSeo } from "@/hooks/usePageSeo";
 
 const NotFound = () => {
   const location = useLocation();
+
+  usePageSeo({
+    title: "Page Not Found",
+    description: "The page you requested could not be found on InferenceLogic.",
+    path: location.pathname,
+    noindex: true,
+  });
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);

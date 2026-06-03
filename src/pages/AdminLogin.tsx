@@ -4,8 +4,11 @@ import FooterSection from "@/components/FooterSection";
 import { Lock, ArrowLeft } from "lucide-react";
 import { requireAdminSession } from "@/lib/requireAdminSession";
 import { toast } from "sonner";
+import { usePageSeo } from "@/hooks/usePageSeo";
 
 const AdminLogin = () => {
+  usePageSeo({ title: "Admin Login", description: "Private admin login.", noindex: true });
+
   const navigate = useNavigate();
 
   return (

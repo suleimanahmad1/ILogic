@@ -28,6 +28,9 @@ export type BlogPost = {
   excerpt: string | null;
   content: string | null;
   cover_url: string | null;
+  author_name: string | null;
+  is_pinned?: boolean | null;
+  sort_order?: number | null;
   tags: string[] | null;
   published: boolean;
   created_at: string;

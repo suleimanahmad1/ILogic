@@ -10,7 +10,7 @@ import BrandLogo from "@/components/BrandLogo";
 const links = [
   { label: "Skills", href: "#skills", id: "skills" },
   { label: "Projects", href: "#projects", id: "projects" },
-  { label: "About", href: "#about", id: "about" },
+  { label: "About", href: "/about-dashboard", id: "about", route: true },
   { label: "Education", href: "#education", id: "education" },
   { label: "Blogs", href: "/blogs-dashboard", id: "blogs", route: true },
 ];

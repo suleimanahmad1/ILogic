@@ -7,8 +7,16 @@ import BlogCard from "@/components/BlogCard";
 import { useBlogPosts } from "@/hooks/useSiteData";
 import { BLOG_INITIAL, BLOG_LOAD_STEP } from "@/lib/loadMore";
 import { Button } from "@/components/ui/button";
+import { usePageSeo } from "@/hooks/usePageSeo";
 
 const BlogsDashboard = () => {
+  usePageSeo({
+    title: "Blog — AI, RAG & Full Stack",
+    description:
+      "Read InferenceLogic articles on AI engineering, RAG pipelines, n8n workflows, React, and shipping production software.",
+    path: "/blogs-dashboard",
+  });
+
   const posts = useBlogPosts();
   const [visibleCount, setVisibleCount] = useState(BLOG_INITIAL);
   const visiblePosts = posts.slice(0, visibleCount);

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -9,6 +9,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import FontFamily from "@tiptap/extension-font-family";
+import Image from "@tiptap/extension-image";
 import { Extension } from "@tiptap/core";
 import {
   AlignCenter,
@@ -17,12 +18,15 @@ import {
   AlignRight,
   Bold,
   Highlighter,
+  ImageIcon,
   Italic,
   Link2,
   Strikethrough,
   Underline as UnderlineIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { adminSelect } from "@/components/admin/adminUi";
+import { getImageUploadError } from "@/lib/imageUploadLimits";
 import { cn } from "@/lib/utils";
 
 type RichTextEditorProps = {
@@ -31,6 +35,12 @@ type RichTextEditorProps = {
   placeholder?: string;
   rows?: number;
   className?: string;
+  onUploadImage?: (file: File) => Promise<string | null>;
+};
+
+/** Keep text selection when clicking toolbar controls (bold only selected words). */
+const keepEditorSelection = (e: React.MouseEvent) => {
+  e.preventDefault();
 };
 
 const FontSize = Extension.create({
@@ -94,6 +104,7 @@ const ToolbarButton = ({
   <button
     type="button"
     title={title}
+    onMouseDown={keepEditorSelection}
     onClick={onClick}
     className={cn(
       "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
@@ -104,8 +115,10 @@ const ToolbarButton = ({
   </button>
 );
 
-const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = "" }: RichTextEditorProps) => {
+const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = "", onUploadImage }: RichTextEditorProps) => {
   const minHeight = Math.max(rows * 26, 120);
+  const scrollMaxHeight = Math.min(Math.max(rows * 28, 160) + 48, 520);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -117,19 +130,23 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = ""
         openOnClick: false,
         HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
       }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      TextAlign.configure({ types: ["heading", "paragraph", "image"] }),
       TextStyle,
       Color,
       FontFamily,
       FontSize,
       Highlight.configure({ multicolor: true }),
       Placeholder.configure({ placeholder: placeholder || "Write here…" }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: { class: "rich-text-inline-image" },
+      }),
     ],
     content: value || "",
     editorProps: {
       attributes: {
-        class: "rich-text-prose focus:outline-none",
-        style: `min-height:${minHeight}px`,
+        class: "rich-text-prose focus:outline-none min-h-full",
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -141,7 +158,7 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = ""
     if (!editor) return;
     const incoming = value || "";
     const current = editor.getHTML();
-    if (incoming !== current) {
+    if (incoming !== current && !editor.isFocused) {
       editor.commands.setContent(incoming, false);
     }
   }, [value, editor]);
@@ -166,12 +183,36 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = ""
 
   const currentSize = (editor.getAttributes("textStyle").fontSize as string | undefined) || "";
 
+  const insertImage = async (file: File) => {
+    if (!onUploadImage) {
+      window.alert("Image upload is not available here.");
+      return;
+    }
+    const sizeError = getImageUploadError(file);
+    if (sizeError) {
+      toast.error(sizeError);
+      return;
+    }
+    const url = await onUploadImage(file);
+    if (url) editor.chain().focus().setImage({ src: url, alt: file.name.replace(/\.[^.]+$/, "") }).run();
+  };
+
+  const onImageInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) await insertImage(file);
+  };
+
   return (
-    <div className={cn("rounded-lg border border-border/40 bg-background/30 overflow-hidden", className)}>
-      <div className="flex flex-wrap items-center gap-1 border-b border-border/40 bg-muted/15 px-2 py-1.5">
+    <div className={cn("rich-text-editor-shell flex flex-col rounded-lg border border-border/40 bg-background/30 overflow-hidden", className)}>
+      <div
+        className="rich-text-editor-toolbar sticky top-0 z-10 shrink-0 flex flex-wrap items-center gap-1 border-b border-border/40 bg-muted/20 px-2 py-1.5 backdrop-blur-md"
+        onMouseDown={keepEditorSelection}
+      >
         <select
           className={cn(adminSelect, "h-8 w-[7.5rem] text-xs")}
           value={currentFont}
+          onMouseDown={keepEditorSelection}
           onChange={(e) => {
             const v = e.target.value;
             if (!v) editor.chain().focus().unsetFontFamily().run();
@@ -188,6 +229,7 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = ""
         <select
           className={cn(adminSelect, "h-8 w-[4.5rem] text-xs")}
           value={currentSize}
+          onMouseDown={keepEditorSelection}
           onChange={(e) => {
             const v = e.target.value;
             if (!v) editor.chain().focus().unsetFontSize().run();
@@ -236,11 +278,13 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = ""
         <label
           className="relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md hover:bg-muted/50"
           title="Text color"
+          onMouseDown={keepEditorSelection}
         >
           <span className="text-sm font-semibold leading-none pointer-events-none">A</span>
           <input
             type="color"
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            onMouseDown={keepEditorSelection}
             onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
           />
         </label>
@@ -256,6 +300,21 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = ""
         <ToolbarButton title="Link" active={editor.isActive("link")} onClick={setLink}>
           <Link2 className="h-4 w-4" />
         </ToolbarButton>
+
+        {onUploadImage ? (
+          <>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onImageInputChange}
+            />
+            <ToolbarButton title="Insert image (max 2 MB)" onClick={() => imageInputRef.current?.click()}>
+              <ImageIcon className="h-4 w-4" />
+            </ToolbarButton>
+          </>
+        ) : null}
 
         <span className="mx-1 h-6 w-px bg-border/50" aria-hidden />
 
@@ -289,7 +348,12 @@ const RichTextEditor = ({ value, onChange, placeholder, rows = 6, className = ""
         </ToolbarButton>
       </div>
 
-      <EditorContent editor={editor} className="rich-text-editor px-3 py-2" />
+      <div
+        className="rich-text-editor-body overflow-y-auto overflow-x-hidden px-3 py-2"
+        style={{ maxHeight: scrollMaxHeight, minHeight }}
+      >
+        <EditorContent editor={editor} className="rich-text-editor" />
+      </div>
     </div>
   );
 };

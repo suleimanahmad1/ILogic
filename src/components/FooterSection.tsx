@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Github, Linkedin } from "lucide-react";
 import { useContactInfo, usePortfolioContent } from "@/hooks/useSiteData";
 
@@ -16,9 +17,10 @@ const FooterSection = () => {
         <div>
           <h4 className="font-semibold text-foreground mb-2">Quick Links</h4>
           <ul className="space-y-1">
-            <li><a href="#about" className="hover:text-primary">About</a></li>
+            <li><Link to="/about-dashboard" className="hover:text-primary">About</Link></li>
             <li><a href="#skills" className="hover:text-primary">Skills</a></li>
             <li><a href="#projects" className="hover:text-primary">Projects</a></li>
+            <li><Link to="/blogs-dashboard" className="hover:text-primary">Blogs</Link></li>
           </ul>
         </div>
 

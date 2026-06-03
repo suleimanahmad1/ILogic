@@ -173,6 +173,16 @@
     @apply text-sm text-muted-foreground mb-12 max-w-xl;
   }
 
+  .rich-text-editor-shell {
+    @apply relative;
+  }
+  .rich-text-editor-toolbar {
+    @apply supports-[backdrop-filter]:bg-muted/30;
+  }
+  .rich-text-editor-body .ProseMirror {
+    @apply text-sm text-foreground leading-relaxed outline-none;
+    min-height: inherit;
+  }
   .rich-text-editor .ProseMirror {
     @apply text-sm text-foreground leading-relaxed;
   }
@@ -181,6 +191,10 @@
   }
   .rich-text-editor .ProseMirror a {
     @apply text-primary underline underline-offset-2;
+  }
+  .rich-text-editor .ProseMirror img,
+  .rich-text-inline-image {
+    @apply my-4 max-w-full h-auto rounded-lg border border-border/30;
   }
   .rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
