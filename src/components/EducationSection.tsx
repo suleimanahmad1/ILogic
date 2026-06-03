@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { GraduationCap, Award, ExternalLink, Pin } from "lucide-react";
 import { useCertifications, useEducationEntries } from "@/hooks/useSiteData";
-import { sortByPinned } from "@/lib/sortByPinned";
 import { LIST_INITIAL, LIST_LOAD_STEP } from "@/lib/loadMore";
 import { Button } from "@/components/ui/button";
 import PortfolioDetailDialog, { type DetailLink } from "@/components/PortfolioDetailDialog";
@@ -43,15 +42,15 @@ const EducationSection = () => {
 
   const addedCerts = useMemo(
     () =>
-      sortByPinned(certs).map((cert) => ({
+      certs.map((cert) => ({
         id: cert.id,
-        name: (cert as { course_name?: string }).course_name || cert.name,
-        organization: (cert as { organization?: string }).organization || "Certification",
-        year: (cert as { year?: string }).year || "",
+        name: cert.name,
+        organization: "Certification",
+        year: "",
         code: cert.code,
         url: cert.url,
         description: cert.description,
-        image_url: cert.image_url || cert.image,
+        image_url: cert.image,
         is_pinned: cert.is_pinned,
       })),
     [certs]

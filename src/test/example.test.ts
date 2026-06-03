@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 describe("example", () => {
   it("merges class names", () => {
-    expect(cn("text-sm", false && "hidden", "text-lg")).toBe("text-lg");
+    const hidden = false as boolean;
+    expect(cn("text-sm", hidden && "hidden", "text-lg")).toBe("text-lg");
   });
 });

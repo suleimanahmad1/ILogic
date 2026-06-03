@@ -149,7 +149,8 @@ const Navbar = () => {
           <button
             onClick={() => {
               setMenuOpen(false);
-              user ? openAdmin() : openLogin();
+              if (user) void openAdmin();
+              else openLogin();
             }}
             className="text-sm font-mono text-muted-foreground hover:text-primary transition-colors text-left inline-flex items-center gap-2"
           >

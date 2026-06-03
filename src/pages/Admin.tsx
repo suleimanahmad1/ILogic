@@ -27,7 +27,6 @@ import AdminInboxPage from "@/components/admin/AdminInboxPage";
 import type { ContactMessage } from "@/lib/contactInbox";
 import { getUnreadCount, removeMessageFromRead, subscribeInboxRead } from "@/lib/inboxRead";
 
-const db = supabase as any;
 const STORAGE_BUCKET = "website-images";
 type EducationRow = { id: string; institute: string; degree: string; start_date: string | null; end_date: string | null; year: string | null; image_url: string | null; sort_order: number | null };
 type SkillCategoryRow = { id: string; name: string; sort_order: number | null };
@@ -92,8 +91,13 @@ const Admin = () => {
   ]), []);
 
   useEffect(() => {
-    checkAuth();
-    void loadAdminData();
+    const init = async () => {
+      await checkAuth();
+      await loadAdminData();
+    };
+    void init();
+    // Intentionally run once when admin panel mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -124,14 +128,14 @@ const Admin = () => {
 
   const loadAdminData = async () => {
     const [contactRes, educationRes, categoriesRes, itemsRes, certRes, projectsRes, blogsRes, messagesRes] = await Promise.all([
-      db.from("contact_info").select("*").limit(1).maybeSingle(),
-      db.from("education").select("*").order("sort_order", { ascending: true }),
-      db.from("skills_categories").select("*").order("sort_order", { ascending: true }),
-      db.from("skills_items").select("*").order("sort_order", { ascending: true }),
-      db.from("certifications").select("*").order("created_at", { ascending: true }),
-      db.from("projects").select("*").order("created_at", { ascending: true }),
-      db.from("blog_posts").select("*").order("created_at", { ascending: false }),
-      db.from("contact_messages").select("*").order("created_at", { ascending: false }),
+      supabase.from("contact_info").select("*").limit(1).maybeSingle(),
+      supabase.from("education").select("*").order("sort_order", { ascending: true }),
+      supabase.from("skills_categories").select("*").order("sort_order", { ascending: true }),
+      supabase.from("skills_items").select("*").order("sort_order", { ascending: true }),
+      supabase.from("certifications").select("*").order("created_at", { ascending: true }),
+      supabase.from("projects").select("*").order("created_at", { ascending: true }),
+      supabase.from("blog_posts").select("*").order("created_at", { ascending: false }),
+      supabase.from("contact_messages").select("*").order("created_at", { ascending: false }),
     ]);
 
     const contact = contactRes.data as { id: string; email: string; phone: string; address: string } | null;
@@ -174,8 +178,8 @@ const Admin = () => {
   const saveContact = async () => {
     const payload = contactInfo;
     const { data, error } = contactId
-      ? await db.from("contact_info").update(payload).eq("id", contactId).select("id").maybeSingle()
-      : await db.from("contact_info").insert(payload).select("id").maybeSingle();
+      ? await supabase.from("contact_info").update(payload).eq("id", contactId).select("id").maybeSingle()
+      : await supabase.from("contact_info").insert(payload).select("id").maybeSingle();
     if (error) return toast.error(error.message);
     if (!contactId) setContactId(data?.id ?? null);
     toast.success("Contact info saved");
@@ -195,8 +199,8 @@ const Admin = () => {
       image_url: educationForm.image.trim() || null,
     };
     const { error } = editingEducationId
-      ? await db.from("education").update(payload).eq("id", editingEducationId)
-      : await db.from("education").insert({ ...payload, sort_order: education.length + 1 });
+      ? await supabase.from("education").update(payload).eq("id", editingEducationId)
+      : await supabase.from("education").insert({ ...payload, sort_order: education.length + 1 });
     if (error) return toast.error(error.message);
     toast.success(editingEducationId ? "Education updated" : "Education added");
     setEducationForm({ institute: "", degree: "", startDate: "", endDate: "", year: "", image: "" });
@@ -218,7 +222,7 @@ const Admin = () => {
   };
 
   const deleteEducation = async (id: string) => {
-    const { error } = await db.from("education").delete().eq("id", id);
+    const { error } = await supabase.from("education").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     void loadAdminData();
@@ -226,7 +230,7 @@ const Admin = () => {
 
   const saveSkillCategory = async () => {
     if (!skillCategoryName.trim()) return toast.error("Category name is required");
-    const { error } = await db.from("skills_categories").insert({ name: skillCategoryName, sort_order: skillCategories.length + 1 });
+    const { error } = await supabase.from("skills_categories").insert({ name: skillCategoryName, sort_order: skillCategories.length + 1 });
     if (error) return toast.error(error.message);
     toast.success("Category added");
     setSkillCategoryName("");
@@ -237,8 +241,8 @@ const Admin = () => {
     if (!skillItemForm.categoryId || !skillItemForm.name.trim()) return toast.error("Category and skill name are required");
     const payload = { category_id: skillItemForm.categoryId, name: skillItemForm.name };
     const { error } = editingSkillItemId
-      ? await db.from("skills_items").update(payload).eq("id", editingSkillItemId)
-      : await db.from("skills_items").insert({ ...payload, sort_order: skillItems.length + 1 });
+      ? await supabase.from("skills_items").update(payload).eq("id", editingSkillItemId)
+      : await supabase.from("skills_items").insert({ ...payload, sort_order: skillItems.length + 1 });
     if (error) return toast.error(error.message);
     toast.success(editingSkillItemId ? "Skill updated" : "Skill added");
     setSkillItemForm({ categoryId: "", name: "" });
@@ -253,14 +257,14 @@ const Admin = () => {
   };
 
   const deleteSkillItem = async (id: string) => {
-    const { error } = await db.from("skills_items").delete().eq("id", id);
+    const { error } = await supabase.from("skills_items").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     void loadAdminData();
   };
 
   const deleteSkillCategory = async (id: string) => {
-    const { error } = await db.from("skills_categories").delete().eq("id", id);
+    const { error } = await supabase.from("skills_categories").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Category deleted");
     void loadAdminData();
@@ -279,8 +283,8 @@ const Admin = () => {
       description: certForm.description.trim() || null,
     };
     const { error } = editingCertificationId
-      ? await db.from("certifications").update(payload).eq("id", editingCertificationId)
-      : await db.from("certifications").insert(payload);
+      ? await supabase.from("certifications").update(payload).eq("id", editingCertificationId)
+      : await supabase.from("certifications").insert(payload);
     if (error) return toast.error(error.message);
     toast.success(editingCertificationId ? "Certification updated" : "Certification added");
     setCertForm({ image: "", courseName: "", code: "", url: "", description: "" });
@@ -301,7 +305,7 @@ const Admin = () => {
   };
 
   const deleteCertification = async (id: string) => {
-    const { error } = await db.from("certifications").delete().eq("id", id);
+    const { error } = await supabase.from("certifications").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     void loadAdminData();
@@ -318,7 +322,7 @@ const Admin = () => {
       }, 0);
       nextSortOrder = maxOrder + 1;
     }
-    const { error } = await db.from("certifications").update({ is_pinned: next, sort_order: nextSortOrder }).eq("id", row.id);
+    const { error } = await supabase.from("certifications").update({ is_pinned: next, sort_order: nextSortOrder }).eq("id", row.id);
     if (error) {
       if (/is_pinned/i.test(error.message)) {
         toast.error("Run supabase/apply-pin-columns.sql in Supabase SQL Editor.");
@@ -338,7 +342,7 @@ const Admin = () => {
       toast.error("Pin number must be 1 or greater");
       return;
     }
-    const { error } = await db.from("certifications").update({ sort_order: parsed }).eq("id", row.id);
+    const { error } = await supabase.from("certifications").update({ sort_order: parsed }).eq("id", row.id);
     if (error) return toast.error(error.message);
     toast.success("Pin number updated");
     void loadAdminData();
@@ -360,8 +364,8 @@ const Admin = () => {
       url: projectForm.live.trim() || null,
     };
     const { error } = editingProjectId
-      ? await db.from("projects").update(payload).eq("id", editingProjectId)
-      : await db.from("projects").insert(payload);
+      ? await supabase.from("projects").update(payload).eq("id", editingProjectId)
+      : await supabase.from("projects").insert(payload);
     if (error) return toast.error(error.message);
     toast.success(editingProjectId ? "Project updated" : "Project added");
     setProjectForm({ image: "", projectName: "", technology: "", github: "", live: "", description: "" });
@@ -393,7 +397,7 @@ const Admin = () => {
       }, 0);
       nextSortOrder = maxOrder + 1;
     }
-    const { error } = await db.from("projects").update({ is_pinned: next, sort_order: nextSortOrder }).eq("id", row.id);
+    const { error } = await supabase.from("projects").update({ is_pinned: next, sort_order: nextSortOrder }).eq("id", row.id);
     if (error) {
       if (/is_pinned/i.test(error.message)) {
         toast.error("Run supabase/apply-pin-columns.sql in Supabase SQL Editor.");
@@ -413,14 +417,14 @@ const Admin = () => {
       toast.error("Pin number must be 1 or greater");
       return;
     }
-    const { error } = await db.from("projects").update({ sort_order: parsed }).eq("id", row.id);
+    const { error } = await supabase.from("projects").update({ sort_order: parsed }).eq("id", row.id);
     if (error) return toast.error(error.message);
     toast.success("Pin number updated");
     void loadAdminData();
   };
 
   const deleteProject = async (id: string) => {
-    const { error } = await db.from("projects").delete().eq("id", id);
+    const { error } = await supabase.from("projects").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     void loadAdminData();
@@ -444,8 +448,8 @@ const Admin = () => {
       updated_at: new Date().toISOString(),
     };
     const { error } = editingBlogId
-      ? await db.from("blog_posts").update(payload).eq("id", editingBlogId)
-      : await db.from("blog_posts").insert(payload);
+      ? await supabase.from("blog_posts").update(payload).eq("id", editingBlogId)
+      : await supabase.from("blog_posts").insert(payload);
     if (error) {
       if (/slug/i.test(error.message)) return toast.error("Slug already exists — use a different slug.");
       return toast.error(error.message);
@@ -471,14 +475,14 @@ const Admin = () => {
   };
 
   const deleteBlogPost = async (id: string) => {
-    const { error } = await db.from("blog_posts").delete().eq("id", id);
+    const { error } = await supabase.from("blog_posts").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     void loadAdminData();
   };
 
   const deleteInboxMessage = async (id: string): Promise<boolean> => {
-    const { error } = await db.from("contact_messages").delete().eq("id", id);
+    const { error } = await supabase.from("contact_messages").delete().eq("id", id);
     if (error) {
       toast.error(error.message);
       return false;

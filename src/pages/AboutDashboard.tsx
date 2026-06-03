@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { sanitizeRichText } from "@/lib/richText";
 
 const INQUIRY_TYPES = ["General inquiry", "AI & ML project", "Full-stack / MERN", "Automation & integrations"];
 const MIN_SUBMIT_MS = 5_000;
@@ -113,7 +114,7 @@ const AboutDashboard = () => {
               {showAboutBody ? (
                 <div
                   className="prose prose-invert max-w-none text-sm text-muted-foreground max-w-3xl mt-4"
-                  dangerouslySetInnerHTML={{ __html: aboutHtml }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichText(aboutHtml) }}
                 />
               ) : null}
             </div>

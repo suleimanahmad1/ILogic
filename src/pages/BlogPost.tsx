@@ -5,8 +5,7 @@ import FooterSection from "@/components/FooterSection";
 import { supabase } from "@/integrations/supabase/client";
 import type { BlogPost as BlogPostType } from "@/hooks/useSiteData";
 import { sanitizeRichText } from "@/lib/richText";
-
-const db = supabase as any;
+import { mapBlogPostRow } from "@/lib/supabaseMappers";
 
 const formatBlogDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -22,15 +21,15 @@ const BlogPost = () => {
       return;
     }
     let mounted = true;
-    db
+    supabase
       .from("blog_posts")
       .select("*")
       .eq("slug", slug)
       .eq("published", true)
       .maybeSingle()
-      .then(({ data }: { data: BlogPostType | null }) => {
+      .then(({ data }) => {
         if (!mounted) return;
-        setPost(data);
+        setPost(data ? mapBlogPostRow(data) : null);
         setLoading(false);
       });
     return () => {

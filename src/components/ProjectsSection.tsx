@@ -2,33 +2,19 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ExternalLink, Github as GithubIcon, Globe, Pin } from "lucide-react";
 import { useProjects } from "@/hooks/useSiteData";
-import { sortByPinned } from "@/lib/sortByPinned";
+import type { Project } from "@/types/site";
 import { LIST_INITIAL, LIST_LOAD_STEP } from "@/lib/loadMore";
 import { Button } from "@/components/ui/button";
 import PortfolioDetailDialog, { type DetailLink } from "@/components/PortfolioDetailDialog";
 import { richTextToPlain } from "@/lib/richText";
 
-type ProjectRow = {
-  id: string;
-  title?: string | null;
-  project_name?: string | null;
-  description?: string | null;
-  tech_stack?: string[] | null;
-  technology?: string | null;
-  github_url?: string | null;
-  live_url?: string | null;
-  url?: string | null;
-  image_url?: string | null;
-  image?: string | null;
-  is_pinned?: boolean | null;
-};
-
-type MappedProject = ProjectRow & {
+type MappedProject = Project & {
   title: string;
   image_url: string | null;
+  technology: string;
   tech: string;
-  github: string | null | undefined;
-  live: string | null | undefined;
+  github_url: string | null;
+  live_url: string | null;
 };
 
 const openExternal = (e: React.MouseEvent, url: string) => {
@@ -38,19 +24,20 @@ const openExternal = (e: React.MouseEvent, url: string) => {
 };
 
 const ProjectsSection = () => {
-  const projects = useProjects() as ProjectRow[];
+  const projects = useProjects();
   const [visibleCount, setVisibleCount] = useState(LIST_INITIAL);
   const [selected, setSelected] = useState<MappedProject | null>(null);
 
   const mappedProjects = useMemo(
     () =>
-      sortByPinned(projects).map((project) => ({
+      projects.map((project) => ({
         ...project,
-        title: project.project_name || project.title || "Untitled Project",
-        image_url: project.image_url || project.image || null,
-        tech: project.technology || (project.tech_stack || []).join(", "),
-        github: project.github_url,
-        live: project.live_url,
+        title: project.name || "Untitled Project",
+        image_url: project.image,
+        technology: project.role || "",
+        tech: project.role || "",
+        github_url: project.github,
+        live_url: project.live,
       })),
     [projects]
   );
@@ -60,11 +47,8 @@ const ProjectsSection = () => {
 
   const projectLinks = (project: MappedProject): DetailLink[] => {
     const links: DetailLink[] = [];
-    if (project.github) links.push({ label: "GitHub", href: project.github, variant: "github" });
-    if (project.live) links.push({ label: "Live demo", href: project.live, variant: "live" });
-    if (!project.github && !project.live && project.url) {
-      links.push({ label: "View project", href: project.url, variant: "external" });
-    }
+    if (project.github_url) links.push({ label: "GitHub", href: project.github_url, variant: "github" });
+    if (project.live_url) links.push({ label: "Live demo", href: project.live_url, variant: "live" });
     return links;
   };
 
@@ -115,19 +99,14 @@ const ProjectsSection = () => {
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-mono text-[10px] text-primary/60 tracking-widest">#{String(index + 1).padStart(2, "0")}</span>
                     <div className="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                      {project.github && (
-                        <a href={project.github} onClick={(e) => openExternal(e, project.github as string)} aria-label="GitHub" className="text-muted-foreground hover:text-primary transition-colors">
+                      {project.github_url && (
+                        <a href={project.github_url} onClick={(e) => openExternal(e, project.github_url!)} aria-label="GitHub" className="text-muted-foreground hover:text-primary transition-colors">
                           <GithubIcon className="w-3.5 h-3.5" />
                         </a>
                       )}
-                      {project.live && (
-                        <a href={project.live} onClick={(e) => openExternal(e, project.live as string)} aria-label="Live demo" className="text-muted-foreground hover:text-primary transition-colors">
+                      {project.live_url && (
+                        <a href={project.live_url} onClick={(e) => openExternal(e, project.live_url!)} aria-label="Live demo" className="text-muted-foreground hover:text-primary transition-colors">
                           <Globe className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                      {!project.github && !project.live && project.url && (
-                        <a href={project.url} onClick={(e) => openExternal(e, project.url as string)} aria-label="External link" className="text-muted-foreground hover:text-primary transition-colors">
-                          <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       )}
                     </div>
