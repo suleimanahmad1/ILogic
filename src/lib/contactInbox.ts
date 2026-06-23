@@ -52,15 +52,35 @@ export type ParsedContactBody = {
 };
 
 export const parseContactMessageBody = (raw: string): ParsedContactBody => {
-  const phone = raw.match(/phone:\s*([^|]+)/i)?.[1]?.trim() || null;
-  const service = raw.match(/service:\s*([^|]+)/i)?.[1]?.trim() || null;
-  const description = raw.match(/description:\s*(.+)/is)?.[1]?.trim() || null;
-  const hasStructured = phone || service || description;
+  const trimmed = raw.trim();
+  const phone = trimmed.match(/(?:^|\|)\s*phone:\s*([^|]+)/i)?.[1]?.trim() || null;
+  const service = trimmed.match(/(?:^|\|)\s*service:\s*([^|]+)/i)?.[1]?.trim() || null;
+  const description = trimmed.match(/(?:^|\|)\s*description:\s*(.+)$/is)?.[1]?.trim() || null;
+  const hasStructured = Boolean(phone || service || description);
   return {
     phone,
     service,
-    description: description || (hasStructured ? null : raw.trim()),
-    raw,
+    description: description || (hasStructured ? null : trimmed),
+    raw: trimmed,
+  };
+};
+
+/** Plain-text body for inbox display, reply email, and copy. */
+export const formatContactMessagePlain = (
+  message: ContactMessage
+): { subject: string; lines: { label: string; value: string }[]; body: string } => {
+  const parsed = parseContactMessageBody(message.message);
+  const lines: { label: string; value: string }[] = [
+    { label: "Name", value: message.name },
+    { label: "Email", value: message.email },
+  ];
+  if (parsed.phone) lines.push({ label: "Phone", value: parsed.phone });
+  if (parsed.service) lines.push({ label: "Service", value: parsed.service });
+  const body = parsed.description || (parsed.phone || parsed.service ? "" : message.message);
+  return {
+    subject: parsed.service || "Contact form inquiry",
+    lines,
+    body,
   };
 };
 
@@ -137,9 +157,10 @@ export const openReplyEmail = (
 ) => {
   const parsed = parseContactMessageBody(message.message);
   const received = formatMessageReceivedAt(message.created_at);
-  const business = options?.businessName ?? "InferenceLogic";
+  const formatted = formatContactMessagePlain(message);
+  const business = options?.businessName ?? "Inference Logix";
 
-  const subject = `Re: Your inquiry — ${business}${parsed.service ? ` (${parsed.service})` : ""}`;
+  const subject = `Re: ${formatted.subject} — ${business}`;
   const body = [
     `Hi ${message.name},`,
     "",
@@ -147,21 +168,16 @@ export const openReplyEmail = (
     "",
     "---",
     "Original submission:",
-    `Received: ${received.absolute} (${received.relative})`,
-    `Name: ${message.name}`,
-    `Email: ${message.email}`,
-    parsed.phone ? `Phone: ${parsed.phone}` : null,
-    parsed.service ? `Service: ${parsed.service}` : null,
+    `Received: ${received.absolute}${received.relative ? ` (${received.relative})` : ""}`,
+    ...formatted.lines.map((row) => `${row.label}: ${row.value}`),
     "",
-    parsed.description || message.message,
+    formatted.body || "(No message body)",
     "",
     "[Your reply here]",
     "",
     "Best regards,",
     options?.yourEmail ?? business,
-  ]
-    .filter((line) => line !== null)
-    .join("\n");
+  ].join("\n");
 
   const mailto = `mailto:${message.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.open(mailto, "_blank", "noopener,noreferrer");

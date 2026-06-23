@@ -5,6 +5,7 @@ import { useCertifications, useEducationEntries } from "@/hooks/useSiteData";
 import { LIST_INITIAL, LIST_LOAD_STEP } from "@/lib/loadMore";
 import { Button } from "@/components/ui/button";
 import PortfolioDetailDialog, { type DetailLink } from "@/components/PortfolioDetailDialog";
+import CertImageFrame from "@/components/CertImageFrame";
 import BlogsSection from "@/components/BlogsSection";
 import { richTextToPlain } from "@/lib/richText";
 
@@ -73,48 +74,50 @@ const EducationSection = () => {
   return (
     <section id="education" className="section-padding bg-muted/10 relative overflow-hidden">
       <div className="orb w-[400px] h-[400px] bg-primary/5 bottom-0 right-0" />
-      <div className="container mx-auto max-w-5xl relative">
+      <div className="container mx-auto max-w-6xl relative">
         <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
           <span className="kicker">04 — Education</span>
           <h2 className="section-heading">
             Learning, <span className="text-gradient">always</span>.
           </h2>
-          <p className="section-sub">Click a certification to view full details.</p>
+          <p className="section-sub">Education timeline and certifications — click a certificate for full details.</p>
 
-          <div className="grid md:grid-cols-2 gap-10">
-            <div>
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            <div className="lg:col-span-4">
               <h3 className="font-mono text-xs text-primary mb-5 tracking-wider uppercase flex items-center gap-2">
                 <GraduationCap className="w-3.5 h-3.5" /> Education
               </h3>
-              <div className="space-y-5 border-l border-border/60 pl-5 relative">
-                {education.length ? education.map((edu, i) => (
-                  <motion.div
-                    key={edu.id}
-                    initial={{ x: -15, opacity: 0 }}
-                    whileInView={{ x: 0, opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1, duration: 0.4 }}
-                    className="relative"
-                  >
-                    <div className="absolute -left-[23px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary/30 border border-primary" />
-                    {edu.image_url ? (
-                      <img src={edu.image_url} alt={edu.institute} className="mb-2 h-14 w-14 rounded-lg object-cover border border-border/40" />
-                    ) : null}
-                    {formatEducationDate(edu.start_date, edu.end_date, edu.year) ? (
-                      <p className="font-mono text-[10px] text-primary/80 mb-0.5">{formatEducationDate(edu.start_date, edu.end_date, edu.year)}</p>
-                    ) : null}
-                    <p className="font-medium text-foreground text-sm">{edu.degree}</p>
-                    <p className="text-xs text-muted-foreground">{edu.institute}</p>
-                  </motion.div>
-                )) : <p className="text-sm text-muted-foreground">No education entries added yet.</p>}
+              <div className="rounded-2xl border border-border/40 bg-card/30 p-5 md:p-6">
+                <div className="space-y-5 border-l border-primary/30 pl-5 relative">
+                  {education.length ? education.map((edu, i) => (
+                    <motion.div
+                      key={edu.id}
+                      initial={{ x: -15, opacity: 0 }}
+                      whileInView={{ x: 0, opacity: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1, duration: 0.4 }}
+                      className="relative"
+                    >
+                      <div className="absolute -left-[23px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary/30 border border-primary" />
+                      {edu.image_url ? (
+                        <img src={edu.image_url} alt={edu.institute} className="mb-2 h-14 w-14 rounded-lg object-cover border border-border/40" />
+                      ) : null}
+                      {formatEducationDate(edu.start_date, edu.end_date, edu.year) ? (
+                        <p className="font-mono text-[10px] text-primary/80 mb-0.5">{formatEducationDate(edu.start_date, edu.end_date, edu.year)}</p>
+                      ) : null}
+                      <p className="font-medium text-foreground text-sm">{edu.degree}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{edu.institute}</p>
+                    </motion.div>
+                  )) : <p className="text-sm text-muted-foreground">No education entries added yet.</p>}
+                </div>
               </div>
             </div>
 
-            <div>
+            <div className="lg:col-span-8">
               <h3 className="font-mono text-xs text-primary mb-5 tracking-wider uppercase flex items-center gap-2">
                 <Award className="w-3.5 h-3.5" /> Certifications
               </h3>
-              <div className="space-y-3">
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {visibleCerts.length ? visibleCerts.map((cert, i) => (
                   <motion.div
                     key={cert.id}
@@ -147,7 +150,7 @@ const EducationSection = () => {
                         </div>
                         <p className="text-[11px] text-muted-foreground">{cert.organization}</p>
                         {cert.image_url ? (
-                          <img src={cert.image_url} alt={cert.name} className="mt-2 w-full max-h-32 rounded-lg object-contain bg-muted/20" />
+                          <CertImageFrame src={cert.image_url} alt={cert.name} frameClassName="max-w-none w-full" />
                         ) : null}
                         {cert.code ? <p className="text-[11px] text-muted-foreground mt-2 line-clamp-1">Code: {cert.code}</p> : null}
                         {cert.description ? (
@@ -169,10 +172,10 @@ const EducationSection = () => {
                       )}
                     </div>
                   </motion.div>
-                )) : <p className="text-sm text-muted-foreground">No certifications added yet.</p>}
+                )) : <p className="text-sm text-muted-foreground sm:col-span-2 xl:col-span-3">No certifications added yet.</p>}
 
                 {hasMoreCerts ? (
-                  <div className="pt-1 flex justify-center md:justify-start">
+                  <div className="pt-1 flex justify-center sm:col-span-2 xl:col-span-3">
                     <Button
                       type="button"
                       variant="outline"

@@ -1,10 +1,10 @@
-export const SITE_NAME = "InferenceLogic";
+export const SITE_NAME = "Inference Logix";
 export const SITE_OWNER = "Suleiman Ahmad";
-export const DEFAULT_TITLE = "InferenceLogic — AI & Full Stack Engineer";
+export const DEFAULT_TITLE = "Inference Logix — AI & Full Stack Engineer";
 export const DEFAULT_DESCRIPTION =
-  "Suleiman Ahmad (InferenceLogic) — AI & full-stack engineer. RAG pipelines, n8n automation, MERN apps, and production-ready intelligent systems.";
+  "Suleiman Ahmad (Inference Logix) — AI & full-stack engineer. RAG pipelines, n8n automation, MERN apps, and production-ready intelligent systems.";
 export const DEFAULT_KEYWORDS =
-  "InferenceLogic, Suleiman Ahmad, AI engineer, full stack developer, machine learning, RAG, LangChain, n8n automation, MERN stack, React developer, portfolio";
+  "Inference Logix, Suleiman Ahmad, AI engineer, full stack developer, machine learning, RAG, LangChain, n8n automation, MERN stack, React developer, portfolio";
 
 export const getSiteOrigin = (): string => {
   const fromEnv = import.meta.env.VITE_SITE_URL as string | undefined;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,10 @@ import { sortByPinned } from "@/lib/sortByPinned";
 import { slugify } from "@/lib/slugify";
 import { richTextToPlain } from "@/lib/richText";
 import { getImageUploadError } from "@/lib/imageUploadLimits";
-import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, Inbox, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff, BookOpen } from "lucide-react";
+import { ArrowLeft, LogOut, Plus, Trash2, Sparkles, Mail, Inbox, Pencil, FolderOpen, GraduationCap, Award, SquareStack, Pin, PinOff, BookOpen, LayoutDashboard } from "lucide-react";
 import AdminInboxPage from "@/components/admin/AdminInboxPage";
+import AdminDashboardPage from "@/components/admin/AdminDashboardPage";
+import CertImageFrame from "@/components/CertImageFrame";
 import type { ContactMessage } from "@/lib/contactInbox";
 import { getUnreadCount, removeMessageFromRead, subscribeInboxRead } from "@/lib/inboxRead";
 import { usePageSeo } from "@/hooks/usePageSeo";
@@ -34,10 +36,10 @@ type EducationRow = { id: string; institute: string; degree: string; start_date:
 type SkillCategoryRow = { id: string; name: string; sort_order: number | null };
 type SkillItemRow = { id: string; category_id: string; name: string; sort_order: number | null };
 type CertificationRow = { id: string; image_url: string | null; image?: string | null; course_name?: string | null; name?: string | null; code: string | null; url: string | null; description: string | null; is_pinned?: boolean | null; sort_order?: number | null; created_at?: string | null };
-type ProjectRow = { id: string; project_name?: string | null; title?: string | null; technology?: string | null; tech_stack?: string[] | null; image_url: string | null; github_url: string | null; live_url: string | null; description: string | null; url: string | null; is_pinned?: boolean | null; sort_order?: number | null; created_at?: string | null };
+type ProjectRow = { id: string; name?: string | null; project_name?: string | null; title?: string | null; technology?: string | null; tech_stack?: string[] | null; image_url: string | null; github_url: string | null; live_url: string | null; description: string | null; url: string | null; is_pinned?: boolean | null; sort_order?: number | null; created_at?: string | null };
 type BlogPostRow = { id: string; title: string; slug: string; excerpt: string | null; content: string | null; cover_url: string | null; author_name: string | null; is_pinned?: boolean | null; sort_order?: number | null; tags: string[] | null; published: boolean; created_at: string };
 
-type PageKey = "contact" | "inbox" | "skills" | "education" | "certifications" | "projects" | "blogs";
+type PageKey = "dashboard" | "contact" | "inbox" | "skills" | "education" | "certifications" | "projects" | "blogs";
 
 type PageConfig = { id: PageKey; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -46,7 +48,7 @@ const Admin = () => {
 
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [activePage, setActivePage] = useState<PageKey>("contact");
+  const [activePage, setActivePage] = useState<PageKey>("dashboard");
 
   const [contactId, setContactId] = useState<string | null>(null);
   const [contactInfo, setContactInfo] = useState({ email: "", phone: "", address: "" });
@@ -84,8 +86,11 @@ const Admin = () => {
 
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const pages: PageConfig[] = useMemo(() => ([
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "contact", label: "Contact", icon: Mail },
     { id: "inbox", label: "Inbox", icon: Inbox },
     { id: "skills", label: "Skills", icon: SquareStack },
@@ -106,7 +111,7 @@ const Admin = () => {
   }, []);
 
   useEffect(() => {
-    const syncUnread = () => setUnreadCount(getUnreadCount(messages));
+    const syncUnread = () => setUnreadCount(getUnreadCount(messagesRef.current));
     syncUnread();
     return subscribeInboxRead(syncUnread);
   }, [messages]);
@@ -362,10 +367,12 @@ const Admin = () => {
     if (!projectForm.projectName.trim() || !projectForm.technology.trim()) {
       return toast.error("Project name and technology are required");
     }
+    const projectName = projectForm.projectName.trim();
     const payload = {
       image_url: projectForm.image.trim() || null,
-      project_name: projectForm.projectName.trim(),
-      title: projectForm.projectName.trim(),
+      name: projectName,
+      project_name: projectName,
+      title: projectName,
       technology: projectForm.technology.trim(),
       tech_stack: projectForm.technology.split(",").map((value) => value.trim()).filter(Boolean),
       live_url: projectForm.live.trim() || null,
@@ -387,7 +394,7 @@ const Admin = () => {
     setEditingProjectId(row.id);
     setProjectForm({
       image: row.image_url || "",
-      projectName: row.project_name || row.title || "",
+      projectName: row.name || row.project_name || row.title || "",
       technology: row.technology || (row.tech_stack || []).join(", "),
       github: row.github_url || "",
       live: row.live_url || "",
@@ -555,12 +562,27 @@ const Admin = () => {
   const pageButtonClass = (page: PageKey) =>
     `w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-all ${activePage === page ? "border-primary/40 bg-primary/10 text-foreground" : "border-transparent bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground"}`;
 
+  const renderDashboardPage = () => (
+    <AdminDashboardPage
+      projectsCount={projects.length}
+      certificationsCount={certifications.length}
+      blogsCount={blogPosts.length}
+      publishedBlogsCount={blogPosts.filter((b) => b.published).length}
+      educationCount={education.length}
+      skillCategoriesCount={skillCategories.length}
+      skillItemsCount={skillItems.length}
+      unreadCount={unreadCount}
+      messages={messages}
+      onNavigate={setActivePage}
+    />
+  );
+
   const renderInboxPage = () => (
     <AdminInboxPage
       messages={messages}
       onDelete={deleteInboxMessage}
       onRefresh={() => void loadAdminData()}
-      onMessageRead={() => setUnreadCount(getUnreadCount(messages))}
+      onMessageRead={() => setUnreadCount(getUnreadCount(messagesRef.current))}
       replyFromEmail={contactInfo.email}
     />
   );
@@ -779,7 +801,11 @@ const Admin = () => {
                 </span>
               ) : null}
               {(cert.image_url || cert.image) ? (
-                <img src={cert.image_url || cert.image || ""} alt={cert.course_name || cert.name || "Certificate"} className="w-full max-h-48 rounded-lg object-contain bg-muted/15 border border-border/25" />
+                <CertImageFrame
+                  src={cert.image_url || cert.image || ""}
+                  alt={cert.course_name || cert.name || "Certificate"}
+                  frameClassName="max-w-none w-full mx-auto"
+                />
               ) : null}
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm leading-snug">{cert.course_name || cert.name}</p>
@@ -960,7 +986,7 @@ const Admin = () => {
       <AdminFormCard icon={FolderOpen} title="Project" subtitle="Name and technology are required.">
         <AdminFieldGrid>
           <AdminField label="Project name" required>
-            <Input value={projectForm.projectName} onChange={(e) => setProjectForm((s) => ({ ...s, projectName: e.target.value }))} placeholder="InferenceLogic CMS" className={adminInput} />
+            <Input value={projectForm.projectName} onChange={(e) => setProjectForm((s) => ({ ...s, projectName: e.target.value }))} placeholder="Inference Logix CMS" className={adminInput} />
           </AdminField>
           <AdminField label="Technology" required>
             <Input value={projectForm.technology} onChange={(e) => setProjectForm((s) => ({ ...s, technology: e.target.value }))} placeholder="React, Supabase, Tailwind" className={adminInput} />
@@ -1010,10 +1036,10 @@ const Admin = () => {
                 </span>
               ) : null}
               {project.image_url ? (
-                <img src={project.image_url} alt={project.project_name || project.title || "Project"} className="w-full max-h-48 rounded-lg object-contain bg-muted/15 border border-border/25" />
+                <img src={project.image_url} alt={project.name || project.project_name || project.title || "Project"} className="w-full max-h-48 rounded-lg object-contain bg-muted/15 border border-border/25" />
               ) : null}
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm">{project.project_name || project.title}</p>
+                <p className="font-medium text-sm">{project.name || project.project_name || project.title}</p>
                 <p className="text-xs text-primary/80 mt-1">{project.technology || (project.tech_stack || []).join(", ")}</p>
                 {project.description ? <p className="text-xs text-muted-foreground mt-2 line-clamp-3 leading-relaxed">{richTextToPlain(project.description)}</p> : null}
                 {project.is_pinned ? (
@@ -1092,6 +1118,7 @@ const Admin = () => {
             </aside>
 
             <section className="p-4 md:p-6 bg-background/50 min-h-[420px]">
+              {activePage === "dashboard" && renderDashboardPage()}
               {activePage === "contact" && renderContactPage()}
               {activePage === "inbox" && renderInboxPage()}
               {activePage === "skills" && renderSkillsPage()}

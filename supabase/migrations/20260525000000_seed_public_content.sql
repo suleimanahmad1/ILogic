@@ -3,7 +3,7 @@
 
 -- About background for the dedicated dashboard only
 INSERT INTO public.about_bg (image_url)
-SELECT 'https://placehold.co/1600x900/png?text=Inference+Logic+About'
+SELECT 'https://placehold.co/1600x900/png?text=Inference+Logix+About'
 WHERE NOT EXISTS (SELECT 1 FROM public.about_bg);
 
 -- Education entries

@@ -21,7 +21,7 @@ const Navbar = () => {
   const [active, setActive] = useState<string>("");
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-  const { user, openLogin } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -45,7 +45,7 @@ const Navbar = () => {
 
   const openAdmin = async () => {
     if (!user) {
-      toast.error("Pehle Login Karein");
+      navigate("/admin-login");
       return;
     }
     if (!(await isAdminUser(user.id))) {
@@ -88,7 +88,7 @@ const Navbar = () => {
           )}
 
           <button
-            onClick={user ? openAdmin : openLogin}
+            onClick={() => void openAdmin()}
             className="inline-flex items-center justify-center rounded-full border border-border/40 p-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
             aria-label="Safeguard"
             title="Safeguard"
@@ -110,7 +110,7 @@ const Navbar = () => {
             {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           <button
-            onClick={user ? openAdmin : openLogin}
+            onClick={() => void openAdmin()}
             className="inline-flex items-center justify-center rounded-full border border-border/40 p-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors"
             aria-label="Safeguard"
             title="Safeguard"
@@ -150,7 +150,7 @@ const Navbar = () => {
             onClick={() => {
               setMenuOpen(false);
               if (user) void openAdmin();
-              else openLogin();
+              else navigate("/admin-login");
             }}
             className="text-sm font-mono text-muted-foreground hover:text-primary transition-colors text-left inline-flex items-center gap-2"
           >

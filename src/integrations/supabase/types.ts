@@ -242,6 +242,7 @@ export type Database = {
           image_url: string | null
           is_pinned: boolean
           live_url: string | null
+          name: string
           project_name: string | null
           sort_order: number | null
           tech_stack: string[] | null
@@ -258,11 +259,12 @@ export type Database = {
           image_url?: string | null
           is_pinned?: boolean
           live_url?: string | null
+          name: string
           project_name?: string | null
           sort_order?: number | null
           tech_stack?: string[] | null
           technology?: string | null
-          title: string
+          title?: string
           updated_at?: string
           url?: string | null
         }
@@ -274,6 +276,7 @@ export type Database = {
           image_url?: string | null
           is_pinned?: boolean
           live_url?: string | null
+          name?: string
           project_name?: string | null
           sort_order?: number | null
           tech_stack?: string[] | null

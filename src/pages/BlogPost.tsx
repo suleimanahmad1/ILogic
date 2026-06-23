@@ -62,7 +62,7 @@ const BlogPost = () => {
   useEffect(() => {
     if (!post) return;
     const plain = richTextToPlain(post.excerpt || post.content || "");
-    const description = plain.slice(0, 160) || `Article by ${post.author_name || "Suleiman Ahmad"} on InferenceLogic.`;
+    const description = plain.slice(0, 160) || `Article by ${post.author_name || "Suleiman Ahmad"} on Inference Logix.`;
     setPageSeo({
       title: post.title,
       description,
@@ -143,7 +143,7 @@ const BlogPost = () => {
           ) : null}
 
           <div
-            className="mt-8 prose prose-invert max-w-none text-muted-foreground leading-relaxed [&_img]:my-6 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl [&_img]:border [&_img]:border-border/30"
+            className="mt-8 rich-text-content max-w-none text-muted-foreground leading-relaxed [&_img]:my-6 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl [&_img]:border [&_img]:border-border/30"
             dangerouslySetInnerHTML={{ __html: sanitizeRichText(post.content || post.excerpt || "") }}
           />
         </article>

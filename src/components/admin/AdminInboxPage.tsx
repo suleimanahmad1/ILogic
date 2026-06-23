@@ -8,7 +8,6 @@ import {
   Inbox,
   Mail,
   MessageSquareText,
-  Phone,
   RefreshCw,
   Reply,
   Trash2,
@@ -20,6 +19,7 @@ import {
   type InboxRange,
   INBOX_RANGE_OPTIONS,
   filterMessagesByRange,
+  formatContactMessagePlain,
   formatMessageReceivedAt,
   formatMessageListDate,
   parseContactMessageBody,
@@ -86,32 +86,28 @@ const AdminInboxPage = ({ messages, onDelete, onRefresh, onMessageRead, replyFro
   }, [selectedId]);
 
   const handleCopyMessage = async (message: ContactMessage) => {
-    const parsed = parseContactMessageBody(message.message);
+    const formatted = formatContactMessagePlain(message);
     const received = formatMessageReceivedAt(message.created_at);
     const text = [
       `Received: ${received.absolute}`,
-      `Name: ${message.name}`,
-      `Email: ${message.email}`,
-      parsed.phone ? `Phone: ${parsed.phone}` : null,
-      parsed.service ? `Service: ${parsed.service}` : null,
+      ...formatted.lines.map((row) => `${row.label}: ${row.value}`),
       "",
-      parsed.description || message.message,
-    ]
-      .filter(Boolean)
-      .join("\n");
+      formatted.body,
+    ].join("\n");
     if (await copyToClipboard(text)) toast.success("Message copied");
     else toast.error("Could not copy");
   };
 
   const renderReadingPane = (message: ContactMessage) => {
-    const parsed = parseContactMessageBody(message.message);
+    const formatted = formatContactMessagePlain(message);
     const received = formatMessageReceivedAt(message.created_at);
 
     return (
       <>
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/30 px-4 py-3 md:px-6 bg-muted/5">
           <div className="min-w-0 flex-1">
-            <h3 className="text-lg font-semibold truncate">{message.name}</h3>
+            <h3 className="text-lg font-semibold truncate">{formatted.subject}</h3>
+            <p className="text-sm text-foreground/90 mt-0.5">{message.name}</p>
             <a href={`mailto:${message.email}`} className="text-sm text-primary hover:underline break-all">
               {message.email}
             </a>
@@ -150,23 +146,22 @@ const AdminInboxPage = ({ messages, onDelete, onRefresh, onMessageRead, replyFro
         </div>
 
         <div className="p-4 md:p-6 space-y-4 overflow-y-auto flex-1">
-          {parsed.service ? (
-            <p className="text-sm">
-              <span className="text-muted-foreground">Subject: </span>
-              <span className="font-medium">{parsed.service}</span>
-            </p>
-          ) : null}
-          {parsed.phone ? (
-            <p className="text-sm flex items-center gap-2 text-muted-foreground">
-              <Phone className="w-4 h-4 text-primary shrink-0" />
-              {parsed.phone}
-            </p>
-          ) : null}
+          <dl className="grid gap-2 sm:grid-cols-2 rounded-lg border border-border/30 bg-muted/10 p-4">
+            {formatted.lines.map((row) => (
+              <div key={row.label}>
+                <dt className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">{row.label}</dt>
+                <dd className="text-sm text-foreground mt-0.5 break-words">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
           {received.utc ? (
             <p className="text-[11px] font-mono text-muted-foreground">Received (UTC): {received.utc}</p>
           ) : null}
-          <div className="rounded-lg border border-border/30 bg-background/40 p-4 text-sm leading-relaxed whitespace-pre-wrap">
-            {parsed.description || message.message}
+          <div>
+            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-2">Message</p>
+            <div className="rounded-lg border border-border/30 bg-background/40 p-4 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+              {formatted.body || "—"}
+            </div>
           </div>
           <Button variant="outline" size="sm" className="rounded-full" onClick={() => void handleCopyMessage(message)}>
             <Copy className="w-3.5 h-3.5 mr-1.5" />
@@ -234,11 +229,11 @@ const AdminInboxPage = ({ messages, onDelete, onRefresh, onMessageRead, replyFro
           >
             <div className="overflow-y-auto flex-1 divide-y divide-border/30">
               {filtered.map((message) => {
-                const parsed = parseContactMessageBody(message.message);
+                const formatted = formatContactMessagePlain(message);
                 const isActive = selectedId === message.id;
                 const unread = !isMessageRead(message.id);
-                const snippet = (parsed.description || message.message).replace(/\s+/g, " ").trim();
-                const subject = parsed.service || "Contact form";
+                const snippet = (formatted.body || message.message).replace(/\s+/g, " ").trim();
+                const subject = formatted.subject;
                 const listDate = formatMessageListDate(message.created_at);
 
                 return (

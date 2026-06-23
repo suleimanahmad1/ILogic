@@ -27,7 +27,7 @@ const AboutDashboard = () => {
   usePageSeo({
     title: "About & Contact",
     description:
-      "Contact Suleiman Ahmad at InferenceLogic for AI, ML, MERN, and n8n automation projects. Get in touch for consulting and engineering work.",
+      "Contact Suleiman Ahmad at Inference Logix for AI, ML, MERN, and n8n automation projects. Get in touch for consulting and engineering work.",
     path: "/about-dashboard",
   });
 
@@ -110,13 +110,13 @@ const AboutDashboard = () => {
                   <div className="flex items-center gap-2 mb-2 text-primary text-xs uppercase tracking-[0.28em]">
                     <Sparkles className="w-3.5 h-3.5" /> About
                   </div>
-                  <h2 className="text-3xl md:text-4xl font-semibold mb-1">Inference Logic</h2>
+                  <h2 className="text-3xl md:text-4xl font-semibold mb-1">Inference Logix</h2>
                   <p className="text-sm text-muted-foreground">AI · MERN · Automation for modern teams</p>
                 </div>
               </div>
-              <h3 className="sr-only">About Inference Logic</h3>
+              <h3 className="sr-only">About Inference Logix</h3>
               <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-3xl">
-                Inference Logic builds polished AI, automation, and full-stack experiences for modern businesses.
+                Inference Logix builds polished AI, automation, and full-stack experiences for modern businesses.
                 We focus on practical systems that feel premium, load fast, and turn ideas into reliable products.
               </p>
               {showAboutBody ? (

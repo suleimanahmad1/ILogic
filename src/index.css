@@ -180,11 +180,14 @@
     @apply supports-[backdrop-filter]:bg-muted/30;
   }
   .rich-text-editor-body .ProseMirror {
-    @apply text-sm text-foreground leading-relaxed outline-none;
+    @apply text-base text-foreground leading-relaxed outline-none;
     min-height: inherit;
   }
   .rich-text-editor .ProseMirror {
-    @apply text-sm text-foreground leading-relaxed;
+    @apply text-base text-foreground leading-relaxed;
+  }
+  .rich-text-editor .ProseMirror span[style] {
+    line-height: 1.5;
   }
   .rich-text-editor .ProseMirror p {
     @apply my-2;
@@ -199,5 +202,15 @@
   .rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     @apply text-muted-foreground float-left h-0 pointer-events-none;
+  }
+
+  .rich-text-content mark,
+  .rich-text-editor .ProseMirror mark {
+    border-radius: 0.15rem;
+    padding: 0 0.12em;
+  }
+  .rich-text-content p,
+  .rich-text-editor .ProseMirror p {
+    margin: 0.5em 0;
   }
 }

@@ -13,7 +13,7 @@ const BrandLogo = ({ className, imageClassName, showName = false, href = "/" }: 
   const img = (
     <img
       src={logoImg}
-      alt="Inference Logic"
+      alt="Inference Logix"
       className={cn("h-9 w-9 sm:h-10 sm:w-10 rounded-full object-cover ring-1 ring-primary/20", imageClassName)}
     />
   );
@@ -24,7 +24,7 @@ const BrandLogo = ({ className, imageClassName, showName = false, href = "/" }: 
       {showName ? (
         <span className="hidden sm:flex flex-col leading-tight">
           <span className="text-xs font-mono uppercase tracking-[0.2em] text-muted-foreground">Inference</span>
-          <span className="text-sm font-semibold text-foreground">Logic</span>
+          <span className="text-sm font-semibold text-foreground">Logix</span>
         </span>
       ) : null}
     </span>

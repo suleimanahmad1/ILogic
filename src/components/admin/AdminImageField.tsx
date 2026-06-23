@@ -56,13 +56,13 @@ const AdminImageField = ({
     </div>
     {value ? (
       <div className="flex justify-center rounded-lg bg-background/40 p-2 border border-border/30">
-        <img
-          src={value}
-          alt="Preview"
-          className={`rounded-md max-h-44 ${
-            fullImagePreview ? "object-contain w-full max-w-sm" : "object-cover w-full max-h-36"
-          }`}
-        />
+        {fullImagePreview ? (
+          <div className="w-full max-w-[220px] aspect-square relative overflow-hidden rounded-md bg-muted/15">
+            <img src={value} alt="Preview" className="absolute inset-0 h-full w-full object-contain p-2" />
+          </div>
+        ) : (
+          <img src={value} alt="Preview" className="rounded-md object-cover w-full max-h-36" />
+        )}
       </div>
     ) : (
       <p className="text-[10px] text-center text-muted-foreground">

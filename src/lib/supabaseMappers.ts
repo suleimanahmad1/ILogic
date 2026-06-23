@@ -16,7 +16,7 @@ export const mapCertificationRow = (row: Tables<"certifications">): Certificatio
 export const mapProjectRow = (row: Tables<"projects">): Project => ({
   id: row.id,
   image: row.image_url,
-  name: row.project_name || row.title,
+  name: row.name || row.project_name || row.title,
   description: row.description,
   role: row.technology,
   github: row.github_url,

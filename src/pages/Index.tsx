@@ -33,7 +33,7 @@ const Index = () => {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <h1 className="sr-only">InferenceLogic — Suleiman Ahmad, AI and Full Stack Engineer</h1>
+      <h1 className="sr-only">Inference Logix — Suleiman Ahmad, AI and Full Stack Engineer</h1>
       <HeroSection />
       <AboutSection />
       <SkillsSection />

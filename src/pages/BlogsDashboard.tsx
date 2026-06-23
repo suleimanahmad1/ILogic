@@ -13,7 +13,7 @@ const BlogsDashboard = () => {
   usePageSeo({
     title: "Blog — AI, RAG & Full Stack",
     description:
-      "Read InferenceLogic articles on AI engineering, RAG pipelines, n8n workflows, React, and shipping production software.",
+      "Read Inference Logix articles on AI engineering, RAG pipelines, n8n workflows, React, and shipping production software.",
     path: "/blogs-dashboard",
   });
 

@@ -50,7 +50,7 @@ const HeroSection = () => {
             </h1>
 
             <p className="text-sm md:text-base text-muted-foreground font-medium mb-4 tracking-wide">
-              Founder of <span className="text-primary/90">InferenceLogic</span>
+              Founder of <span className="text-primary/90">Inference Logix</span>
             </p>
 
             <p className="text-base md:text-lg text-primary/90 font-medium mb-6 flex items-center justify-center lg:justify-start gap-2">
@@ -94,7 +94,7 @@ const HeroSection = () => {
                 <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-muted/20">
                   <img
                     src={profileSource}
-                    alt="Suleiman Ahmed — Founder of InferenceLogic"
+                    alt="Suleiman Ahmed — Founder of Inference Logix"
                     className="h-full w-full object-cover scale-[1.12] object-[50%_38%] antialiased"
                   />
                   <div

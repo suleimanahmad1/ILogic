@@ -1,4 +1,5 @@
 import { ExternalLink, Github, Globe, Pin, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -71,13 +72,16 @@ const PortfolioDetailDialog = ({
 
       <div className="max-h-[min(70vh,520px)] overflow-y-auto px-6 py-5 space-y-5">
         {imageUrl ? (
-          <div className="relative rounded-2xl border border-border/30 bg-muted/15 overflow-hidden">
+          <div className="relative rounded-2xl border border-border/30 bg-muted/15 overflow-hidden mx-auto max-w-[320px]">
             <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent z-[1] pointer-events-none" />
-            <div className="flex items-center justify-center p-4 min-h-[12rem]">
+            <div className={kind === "certification" ? "aspect-square flex items-center justify-center p-4" : "flex items-center justify-center p-4 min-h-[12rem]"}>
               <img
                 src={imageUrl}
                 alt={title}
-                className="relative z-0 max-h-[min(45vh,360px)] w-full object-contain rounded-lg"
+                className={cn(
+                  "relative z-0 w-full object-contain rounded-lg",
+                  kind === "certification" ? "h-full max-h-full" : "max-h-[min(45vh,360px)]"
+                )}
               />
             </div>
           </div>
@@ -101,7 +105,7 @@ const PortfolioDetailDialog = ({
           <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-primary/70 mb-2">Overview</p>
           {description?.trim() ? (
             <div
-              className="text-sm md:text-[0.95rem] text-muted-foreground leading-relaxed prose prose-invert max-w-none"
+              className="rich-text-content text-sm md:text-[0.95rem] text-muted-foreground leading-relaxed max-w-none"
               dangerouslySetInnerHTML={{ __html: sanitizeRichText(description) }}
             />
           ) : (
